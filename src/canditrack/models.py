@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 
 @dataclass(frozen=True)
@@ -15,3 +16,24 @@ class Email:
     date: datetime
     snippet: str
     body: str
+
+
+class EventType(StrEnum):
+    """Lo que ha ocurrido en una candidatura."""
+
+    SUBMITTED = "submitted"  # la solicitud se ha enviado
+    VIEWED = "viewed"  # la empresa ha visto la solicitud
+    REJECTED = "rejected"  # la empresa ha descartado la candidatura
+
+
+@dataclass(frozen=True)
+class ApplicationEvent:
+    """Un evento de una candidatura detectado a partir de un correo."""
+
+    type: EventType
+    platform: str
+    company: str
+    position: str | None
+    date: datetime
+    email_id: str
+    thread_id: str
