@@ -1,3 +1,6 @@
 """CandiTrack: seguimiento inteligente de candidaturas."""
 
-__version__ = "0.1.0"
+from importlib.metadata import version
+
+# Única fuente de la versión: pyproject.toml (la actualiza release-please).
+__version__ = version("canditrack")
