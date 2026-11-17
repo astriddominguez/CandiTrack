@@ -31,3 +31,18 @@ Para añadir dependencias: `uv add <paquete>` (o `uv add --dev <paquete>`).
 
 - `main` está protegida: los cambios entran solo por Pull Request.
 - La CI (GitHub Actions) ejecuta lint y tests en cada PR.
+
+## Versiones
+
+Las versiones siguen [SemVer](https://semver.org/lang/es/) y se publican con
+[release-please](https://github.com/googleapis/release-please):
+
+1. Los commits (o títulos de PR con *squash*) siguen
+   [Conventional Commits](https://www.conventionalcommits.org/es/): `feat:`, `fix:`, `docs:`, `ci:`...
+2. Al fusionar en `main`, release-please abre o actualiza un **PR de release** con la nueva
+   versión y el `CHANGELOG.md` (`feat` → versión menor, `fix` → parche).
+3. Al fusionar ese PR se crean el tag `vX.Y.Z` y la GitHub Release.
+
+Requiere el secreto `RELEASE_PLEASE_TOKEN` (fine-grained token con permisos *Contents* y
+*Pull requests* de lectura y escritura sobre este repositorio).
+
