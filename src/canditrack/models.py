@@ -24,6 +24,7 @@ class EventType(StrEnum):
     SUBMITTED = "submitted"  # la solicitud se ha enviado
     VIEWED = "viewed"  # la empresa ha visto la solicitud
     REJECTED = "rejected"  # la empresa ha descartado la candidatura
+    CLOSED = "closed"  # el proceso de selección ha terminado (la oferta se ha cerrado)
 
 
 @dataclass(frozen=True)
