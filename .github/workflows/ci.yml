@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  pytest:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --locked
+      - run: uv run pytest --cov=canditrack --cov-report=term-missing
+
+  # Check único para la protección de rama: pasa solo si lint y todos los pytest pasan.
+  tests:
+    runs-on: ubuntu-latest
+    needs: [lint, pytest]
+    if: always()
+    steps:
+      - name: Verificar resultado de lint y pytest
+        run: |
+          echo "lint=${{ needs.lint.result }} pytest=${{ needs.pytest.result }}"
+          [[ "${{ needs.lint.result }}" == "success" && "${{ needs.pytest.result }}" == "success" ]]
