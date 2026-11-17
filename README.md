@@ -4,6 +4,17 @@
 
 Sistema inteligente de seguimiento de candidaturas laborales conectado a Gmail.
 
+## Puesta en marcha
+
+1. Configura el acceso a Gmail siguiendo [docs/gmail-setup.md](docs/gmail-setup.md)
+   (proyecto de Google Cloud, OAuth y `credentials.json`).
+2. Instala dependencias y prueba la conexión:
+
+   ```bash
+   uv sync
+   uv run canditrack fetch            # últimos correos de los últimos 7 días
+   ```
+
 ## Desarrollo
 
 ```bash
