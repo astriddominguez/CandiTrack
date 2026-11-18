@@ -120,18 +120,16 @@ def test_track_uses_all_platforms_by_default_and_warns_at_max(use_source, capsys
     assert "Aviso: se ha llegado al máximo de 3 correos" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [("7d", "7d"), ("2w", "14d"), ("6M", "6m"), ("1y", "1y"), (" 30d ", "30d")],
-)
-def test_parse_period(value, expected):
-    assert cli.parse_period(value) == expected
+def test_parse_period_converts_to_argparse_error():
+    assert cli.parse_period("2w") == "14d"
+    with pytest.raises(argparse.ArgumentTypeError, match="periodo no válido"):
+        cli.parse_period("3x")
 
 
-@pytest.mark.parametrize("value", ["", "7", "d", "3x", "0d", "-1d", "1.5m"])
-def test_parse_period_rejects_invalid_values(value):
+@pytest.mark.parametrize("value", ["0", "-5", "abc", "1.5"])
+def test_positive_int_rejects_invalid_values(value):
     with pytest.raises(argparse.ArgumentTypeError):
-        cli.parse_period(value)
+        cli.positive_int(value)
 
 
 def test_track_rejects_unknown_platform(use_source):
@@ -139,3 +137,60 @@ def test_track_rejects_unknown_platform(use_source):
 
     with pytest.raises(SystemExit):
         cli.main(["track", "-p", "glassdoor"])
+
+
+CONFIG = """
+[track]
+platforms = ["indeed"]
+since = "90d"
+max = 7
+db = "datos.db"
+"""
+
+
+def test_track_takes_defaults_from_config_file(use_source, tmp_path):
+    source = use_source([])
+    (tmp_path / "canditrack.toml").write_text(CONFIG, encoding="utf-8")
+
+    cli.main(["track"])
+
+    query, max_results = source.calls[0]
+    assert query.startswith("from:(indeedapply@indeed.com ")
+    assert query.endswith("newer_than:90d")
+    assert max_results == 7
+    assert (tmp_path / "datos.db").exists()
+
+
+def test_command_line_options_override_config_file(use_source, tmp_path):
+    source = use_source([])
+    (tmp_path / "canditrack.toml").write_text(CONFIG, encoding="utf-8")
+
+    cli.main(["track", "-p", "linkedin", "-s", "7d", "-n", "3", "--db", "otra.db"])
+
+    assert source.calls == [("from:(jobs-noreply@linkedin.com) newer_than:7d", 3)]
+    assert (tmp_path / "otra.db").exists()
+    assert not (tmp_path / "datos.db").exists()
+
+
+def test_track_uses_explicit_config_path(use_source, tmp_path):
+    source = use_source([])
+    config_dir = tmp_path / "conf"
+    config_dir.mkdir()
+    (config_dir / "mi.toml").write_text(CONFIG, encoding="utf-8")
+
+    cli.main(["track", "--config", str(config_dir / "mi.toml")])
+
+    assert source.calls[0][1] == 7
+    assert (config_dir / "datos.db").exists()  # relativa a la carpeta del archivo
+
+
+def test_invalid_config_file_stops_with_clear_error(use_source, tmp_path, capsys):
+    source = use_source([])
+    (tmp_path / "canditrack.toml").write_text('[track]\nplatforms = ["glassdoor"]\n')
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["track"])
+
+    assert exit_info.value.code == 2
+    assert "plataforma desconocida 'glassdoor'" in capsys.readouterr().err
+    assert source.calls == []  # no llega a conectarse a Gmail

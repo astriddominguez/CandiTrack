@@ -1,0 +1,16 @@
+# Configuración de CandiTrack (opcional).
+# Copia este archivo como canditrack.toml y ajusta lo que quieras: las opciones de la línea
+# de comandos (-p, -s, -n, --db) siempre tienen prioridad sobre lo que pongas aquí.
+
+[track]
+# Plataformas a revisar: "linkedin", "infojobs", "indeed". Si no se pone, todas.
+platforms = ["linkedin", "infojobs", "indeed"]
+
+# Periodo a revisar: 7d, 4w, 6m, 1y...
+since = "30d"
+
+# Máximo de correos a leer.
+max = 500
+
+# Base de datos local con los correos descargados (relativa a la carpeta de este archivo).
+db = "canditrack.db"

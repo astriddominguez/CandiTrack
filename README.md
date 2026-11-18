@@ -34,6 +34,14 @@ ruta que indiques con `--db`). La primera ejecución puede tardar unos minutos (
 cuántos correos se pueden leer por minuto); las siguientes solo descargan los correos nuevos.
 El archivo contiene tus correos: está en `.gitignore` y no debe compartirse.
 
+### Configuración
+
+Para no repetir opciones, copia [canditrack.example.toml](canditrack.example.toml) como
+`canditrack.toml` y ajusta los valores por defecto (plataformas, periodo, máximo y base de
+datos). Es opcional; para usar otro archivo, `--config ruta/al/archivo.toml`.
+
+Prioridad: opción en la línea de comandos > `canditrack.toml` > valor por defecto.
+
 ## Desarrollo
 
 ```bash
