@@ -22,6 +22,10 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 DEFAULT_CREDENTIALS_PATH = Path("credentials.json")
 DEFAULT_TOKEN_PATH = Path("token.json")
 
+# Reintentos (con espera exponencial) ante errores temporales y el límite por minuto
+# de Gmail (403 rateLimitExceeded / 429), que salta al leer cientos de correos seguidos.
+NUM_RETRIES = 6
+
 
 def get_credentials(
     credentials_path: Path = DEFAULT_CREDENTIALS_PATH,
@@ -75,14 +79,16 @@ class GmailSource:
                 q=query,
                 maxResults=min(500, max_results - len(ids)),
                 pageToken=page_token,
-            ).execute()
+            ).execute(num_retries=NUM_RETRIES)
             ids.extend(m["id"] for m in response.get("messages", []))
             page_token = response.get("nextPageToken")
             if not page_token:
                 break
 
         return [
-            parse_message(messages.get(userId="me", id=msg_id, format="full").execute())
+            parse_message(
+                messages.get(userId="me", id=msg_id, format="full").execute(num_retries=NUM_RETRIES)
+            )
             for msg_id in ids[:max_results]
         ]
 

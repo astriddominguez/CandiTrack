@@ -15,6 +15,20 @@ Sistema inteligente de seguimiento de candidaturas laborales conectado a Gmail.
    uv run canditrack fetch            # últimos correos de los últimos 7 días
    ```
 
+## Uso
+
+`canditrack track` lee los correos de las plataformas de empleo y muestra cada candidatura
+con su estado más reciente (`enviada`, `vista`, `rechazada` o `cerrada`):
+
+```bash
+uv run canditrack track                        # todas las plataformas, últimos 30 días
+uv run canditrack track -p linkedin -p indeed  # solo esas plataformas
+uv run canditrack track --since 6m -n 1000     # periodo (7d, 4w, 6m, 1y...) y máximo de correos
+```
+
+Plataformas soportadas: `linkedin`, `infojobs` e `indeed`. Solo se descargan los correos de
+sus remitentes, así que las alertas de empleo y el resto del buzón no cuentan para el máximo.
+
 ## Desarrollo
 
 ```bash
