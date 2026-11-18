@@ -23,16 +23,27 @@ def make_email(sender: str, subject: str, day: int = 17, msg_id: str = "1") -> E
 
 class FakeSource:
     def __init__(self, emails: list[Email]) -> None:
-        self.emails = emails
+        self.emails = {e.id: e for e in emails}
         self.calls: list[tuple[str, int]] = []
+        self.downloaded: list[str] = []
 
     def fetch(self, query: str = "", max_results: int = 50) -> list[Email]:
+        return self.get_messages(self.list_ids(query, max_results))
+
+    def list_ids(self, query: str = "", max_results: int = 50) -> list[str]:
         self.calls.append((query, max_results))
-        return self.emails[:max_results]
+        return list(self.emails)[:max_results]
+
+    def get_messages(self, ids: list[str]) -> list[Email]:
+        self.downloaded.extend(ids)
+        return [self.emails[i] for i in ids]
 
 
 @pytest.fixture
-def use_source(monkeypatch):
+def use_source(monkeypatch, tmp_path):
+    # Trabajar en una carpeta temporal: el canditrack.db por defecto se crea ahí, no en el repo.
+    monkeypatch.chdir(tmp_path)
+
     def install(emails: list[Email]) -> FakeSource:
         source = FakeSource(emails)
         monkeypatch.setattr(cli, "get_credentials", lambda *a: object())
@@ -77,9 +88,24 @@ def test_track_shows_latest_status_per_application(use_source, capsys):
     assert "Backend Dev" in first
     assert "vista" in second
     assert "Globex" in second
-    assert "2 candidaturas (4 correos revisados)" in out
+    assert "2 candidaturas (4 correos revisados, 4 descargados de Gmail)" in out
     assert "Aviso" not in out
     assert source.calls == [("from:(jobs-noreply@linkedin.com) newer_than:14d", 50)]
+
+
+def test_track_reuses_local_database_on_next_run(use_source, capsys, tmp_path):
+    source = use_source([make_email(LINKEDIN, "Globex ha visto tu solicitud")])
+    db = tmp_path / "datos" / "mis-correos.db"
+    db.parent.mkdir()
+
+    cli.main(["track", "--db", str(db)])
+    cli.main(["track", "--db", str(db)])
+
+    out = capsys.readouterr().out
+    assert "1 correos revisados, 1 descargados de Gmail" in out
+    assert "1 correos revisados, 0 descargados de Gmail" in out
+    assert source.downloaded == ["1"]
+    assert db.exists()
 
 
 def test_track_uses_all_platforms_by_default_and_warns_at_max(use_source, capsys):
