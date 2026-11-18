@@ -1,9 +1,15 @@
 """Línea de comandos de CandiTrack."""
 
 import argparse
-import re
 from pathlib import Path
 
+from canditrack.config import (
+    DEFAULT_CONFIG_PATH,
+    ConfigError,
+    TrackConfig,
+    load_config,
+    normalize_period,
+)
 from canditrack.mail.cached import CachedMailSource
 from canditrack.mail.gmail import (
     DEFAULT_CREDENTIALS_PATH,
@@ -13,7 +19,7 @@ from canditrack.mail.gmail import (
 )
 from canditrack.models import EventType
 from canditrack.platforms import PLATFORMS, gmail_query
-from canditrack.storage import DEFAULT_DB_PATH, EmailCache
+from canditrack.storage import EmailCache
 from canditrack.tracking import build_applications
 
 STATUS_LABELS = {
@@ -23,19 +29,24 @@ STATUS_LABELS = {
     EventType.CLOSED: "cerrada",
 }
 
-_PERIOD = re.compile(r"^(\d+)([dwmy])$")
-
 
 def parse_period(value: str) -> str:
-    """Convierte "7d", "4w", "6m" o "1y" al formato de `newer_than:` de Gmail."""
-    match = _PERIOD.match(value.strip().lower())
-    if not match or int(match[1]) == 0:
-        raise argparse.ArgumentTypeError(
-            f"periodo no válido: {value!r} (usa p. ej. 7d, 4w, 6m o 1y)"
-        )
-    amount, unit = int(match[1]), match[2]
-    # Gmail no entiende semanas: se pasan a días.
-    return f"{amount * 7}d" if unit == "w" else f"{amount}{unit}"
+    """Tipo de argparse para periodos ("7d", "4w", "6m", "1y")."""
+    try:
+        return normalize_period(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
+
+
+def positive_int(value: str) -> int:
+    """Tipo de argparse para enteros mayores que 0."""
+    try:
+        number = int(value)
+    except ValueError:
+        number = 0
+    if number <= 0:
+        raise argparse.ArgumentTypeError(f"tiene que ser un entero mayor que 0: {value!r}")
+    return number
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -47,7 +58,13 @@ def main(argv: list[str] | None = None) -> None:
     fetch.add_argument("-n", "--max", type=int, default=10, help="Máximo de correos")
     _add_auth_arguments(fetch)
 
-    track = sub.add_parser("track", help="Muestra el estado de tus candidaturas")
+    # Sin valor por defecto (None): si no se pasan, se usa el archivo de configuración.
+    defaults = TrackConfig()
+    track = sub.add_parser(
+        "track",
+        help="Muestra el estado de tus candidaturas",
+        description=f"Los valores por defecto se pueden cambiar en {DEFAULT_CONFIG_PATH}.",
+    )
     track.add_argument(
         "-p",
         "--platform",
@@ -59,19 +76,35 @@ def main(argv: list[str] | None = None) -> None:
         "-s",
         "--since",
         type=parse_period,
-        default="30d",
-        help="Periodo a revisar: 7d, 4w, 6m, 1y... (por defecto, 30d)",
+        help=f"Periodo a revisar: 7d, 4w, 6m, 1y... (por defecto, {defaults.since})",
     )
-    track.add_argument("-n", "--max", type=int, default=500, help="Máximo de correos a leer")
+    track.add_argument(
+        "-n",
+        "--max",
+        type=positive_int,
+        help=f"Máximo de correos a leer (por defecto, {defaults.max})",
+    )
     track.add_argument(
         "--db",
         type=Path,
-        default=DEFAULT_DB_PATH,
-        help=f"Base de datos local con los correos ya descargados (por defecto, {DEFAULT_DB_PATH})",
+        help=f"Base de datos local con los correos ya descargados (por defecto, {defaults.db})",
+    )
+    track.add_argument(
+        "--config",
+        type=Path,
+        help=f"Archivo de configuración (por defecto, {DEFAULT_CONFIG_PATH} si existe)",
     )
     _add_auth_arguments(track)
 
     args = parser.parse_args(argv)
+
+    if args.command == "track":
+        try:
+            config = load_config(args.config)
+        except ConfigError as e:
+            track.error(str(e))
+        _apply_config(args, config.track)
+
     source = GmailSource.from_credentials(get_credentials(args.credentials, args.token))
 
     if args.command == "fetch":
@@ -84,8 +117,16 @@ def main(argv: list[str] | None = None) -> None:
             _track(CachedMailSource(source, cache), args)
 
 
+def _apply_config(args: argparse.Namespace, config: TrackConfig) -> None:
+    """Rellena las opciones que no se han pasado con lo que diga la configuración."""
+    args.platform = args.platform or list(config.platforms) or sorted(PLATFORMS)
+    args.since = args.since or config.since
+    args.max = args.max or config.max
+    args.db = args.db or config.db
+
+
 def _track(source: CachedMailSource, args: argparse.Namespace) -> None:
-    platforms = [PLATFORMS[name] for name in args.platform or sorted(PLATFORMS)]
+    platforms = [PLATFORMS[name] for name in args.platform]
     emails = source.fetch(gmail_query(platforms, args.since), args.max)
 
     events = []
