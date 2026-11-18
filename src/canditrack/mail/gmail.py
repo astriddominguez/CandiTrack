@@ -92,6 +92,9 @@ def parse_message(message: dict[str, Any]) -> Email:
     payload = message.get("payload", {})
     headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
     date = datetime.fromtimestamp(int(message.get("internalDate", 0)) / 1000, tz=UTC)
+    plain = _find_part(payload, "text/plain")
+    html = _find_part(payload, "text/html")
+    html_text = _html_to_text(html) if html is not None else ""
 
     return Email(
         id=message["id"],
@@ -100,17 +103,9 @@ def parse_message(message: dict[str, Any]) -> Email:
         subject=headers.get("subject", ""),
         date=date,
         snippet=unescape(message.get("snippet", "")),
-        body=_extract_body(payload),
+        body=plain if plain is not None else html_text,
+        html_text=html_text,
     )
-
-
-def _extract_body(payload: dict[str, Any]) -> str:
-    """Devuelve el texto plano del mensaje; si solo hay HTML, lo convierte a texto."""
-    plain = _find_part(payload, "text/plain")
-    if plain is not None:
-        return plain
-    html = _find_part(payload, "text/html")
-    return _html_to_text(html) if html is not None else ""
 
 
 def _find_part(part: dict[str, Any], mime_type: str) -> str | None:
