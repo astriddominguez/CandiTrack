@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/astriddominguez/CandiTrack/compare/v0.6.0...v0.7.0) (2026-11-18)
+
+
+### Features
+
+* add optional canditrack.toml config file for track defaults ([#15](https://github.com/astriddominguez/CandiTrack/issues/15)) ([c96a1cf](https://github.com/astriddominguez/CandiTrack/commit/c96a1cfa246e2507d674f67cc9d92ae3d5b3b66b))
+
 ## [0.6.0](https://github.com/astriddominguez/CandiTrack/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 
