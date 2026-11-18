@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/astriddominguez/CandiTrack/compare/v0.5.0...v0.6.0) (2026-11-18)
+
+
+### Features
+
+* cache downloaded emails in a local SQLite database ([#13](https://github.com/astriddominguez/CandiTrack/issues/13)) ([317feb2](https://github.com/astriddominguez/CandiTrack/commit/317feb23d82b7072df8d475dd6e6c93cf717cb40))
+
 ## [0.5.0](https://github.com/astriddominguez/CandiTrack/compare/v0.4.0...v0.5.0) (2026-11-18)
 
 
