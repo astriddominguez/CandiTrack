@@ -2,7 +2,7 @@ import base64
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from canditrack.mail.gmail import GmailSource, parse_message
+from canditrack.mail.gmail import NUM_RETRIES, GmailSource, parse_message
 
 
 def b64(text: str) -> str:
@@ -90,3 +90,16 @@ def test_fetch_follows_pagination_and_respects_max_results():
     assert [e.id for e in emails] == ["a", "b", "c"]
     assert messages.list.call_count == 2
     assert messages.list.call_args_list[0].kwargs["q"] == "label:inbox"
+
+
+def test_fetch_retries_on_rate_limit():
+    service = MagicMock()
+    messages = service.users.return_value.messages.return_value
+    messages.list.return_value.execute.return_value = {"messages": [{"id": "a"}]}
+    get_request = messages.get.return_value
+    get_request.execute.return_value = make_message(msg_id="a")
+
+    GmailSource(service).fetch(max_results=1)
+
+    messages.list.return_value.execute.assert_called_once_with(num_retries=NUM_RETRIES)
+    get_request.execute.assert_called_once_with(num_retries=NUM_RETRIES)
