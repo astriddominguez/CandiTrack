@@ -69,6 +69,10 @@ class GmailSource:
         return cls(build("gmail", "v1", credentials=credentials, cache_discovery=False))
 
     def fetch(self, query: str = "", max_results: int = 50) -> list[Email]:
+        return self.get_messages(self.list_ids(query, max_results))
+
+    def list_ids(self, query: str = "", max_results: int = 50) -> list[str]:
+        """IDs de los correos que cumplen `query`, del más reciente al más antiguo (barato)."""
         messages = self._service.users().messages()
         ids: list[str] = []
         page_token: str | None = None
@@ -84,12 +88,16 @@ class GmailSource:
             page_token = response.get("nextPageToken")
             if not page_token:
                 break
+        return ids[:max_results]
 
+    def get_messages(self, ids: list[str]) -> list[Email]:
+        """Descarga los correos completos (lento: una petición por correo)."""
+        messages = self._service.users().messages()
         return [
             parse_message(
                 messages.get(userId="me", id=msg_id, format="full").execute(num_retries=NUM_RETRIES)
             )
-            for msg_id in ids[:max_results]
+            for msg_id in ids
         ]
 
 

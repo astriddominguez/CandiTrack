@@ -18,6 +18,10 @@ htmlcov/
 credentials.json
 token.json
 
+# Datos personales: base de datos local con tus correos
+*.db
+*.db-journal
+
 # Editor / SO
 .vscode/
 .idea/

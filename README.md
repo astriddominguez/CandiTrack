@@ -29,6 +29,11 @@ uv run canditrack track --since 6m -n 1000     # periodo (7d, 4w, 6m, 1y...) y m
 Plataformas soportadas: `linkedin`, `infojobs` e `indeed`. Solo se descargan los correos de
 sus remitentes, así que las alertas de empleo y el resto del buzón no cuentan para el máximo.
 
+Los correos descargados se guardan en una base de datos SQLite local (`canditrack.db`, o la
+ruta que indiques con `--db`). La primera ejecución puede tardar unos minutos (Gmail limita
+cuántos correos se pueden leer por minuto); las siguientes solo descargan los correos nuevos.
+El archivo contiene tus correos: está en `.gitignore` y no debe compartirse.
+
 ## Desarrollo
 
 ```bash

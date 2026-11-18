@@ -4,6 +4,7 @@ import argparse
 import re
 from pathlib import Path
 
+from canditrack.mail.cached import CachedMailSource
 from canditrack.mail.gmail import (
     DEFAULT_CREDENTIALS_PATH,
     DEFAULT_TOKEN_PATH,
@@ -12,6 +13,7 @@ from canditrack.mail.gmail import (
 )
 from canditrack.models import EventType
 from canditrack.platforms import PLATFORMS, gmail_query
+from canditrack.storage import DEFAULT_DB_PATH, EmailCache
 from canditrack.tracking import build_applications
 
 STATUS_LABELS = {
@@ -61,6 +63,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Periodo a revisar: 7d, 4w, 6m, 1y... (por defecto, 30d)",
     )
     track.add_argument("-n", "--max", type=int, default=500, help="Máximo de correos a leer")
+    track.add_argument(
+        "--db",
+        type=Path,
+        default=DEFAULT_DB_PATH,
+        help=f"Base de datos local con los correos ya descargados (por defecto, {DEFAULT_DB_PATH})",
+    )
     _add_auth_arguments(track)
 
     args = parser.parse_args(argv)
@@ -72,25 +80,33 @@ def main(argv: list[str] | None = None) -> None:
             print(f"{local_date:%Y-%m-%d %H:%M}  {email.sender[:40]:<40}  {email.subject}")
 
     elif args.command == "track":
-        platforms = [PLATFORMS[name] for name in args.platform or sorted(PLATFORMS)]
-        emails = source.fetch(gmail_query(platforms, args.since), args.max)
+        with EmailCache(args.db) as cache:
+            _track(CachedMailSource(source, cache), args)
 
-        events = []
-        for email in emails:
-            for platform in platforms:
-                if event := platform.classifier.classify(email):
-                    events.append(event)
-                    break
 
-        applications = build_applications(events)
-        for app in applications:
-            print(
-                f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<8}  "
-                f"{STATUS_LABELS[app.status]:<9}  {app.company[:35]:<35}  {app.position or '-'}"
-            )
-        print(f"\n{len(applications)} candidaturas ({len(emails)} correos revisados)")
-        if len(emails) >= args.max:
-            print(f"Aviso: se ha llegado al máximo de {args.max} correos; amplíalo con -n.")
+def _track(source: CachedMailSource, args: argparse.Namespace) -> None:
+    platforms = [PLATFORMS[name] for name in args.platform or sorted(PLATFORMS)]
+    emails = source.fetch(gmail_query(platforms, args.since), args.max)
+
+    events = []
+    for email in emails:
+        for platform in platforms:
+            if event := platform.classifier.classify(email):
+                events.append(event)
+                break
+
+    applications = build_applications(events)
+    for app in applications:
+        print(
+            f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<8}  "
+            f"{STATUS_LABELS[app.status]:<9}  {app.company[:35]:<35}  {app.position or '-'}"
+        )
+    print(
+        f"\n{len(applications)} candidaturas ({len(emails)} correos revisados, "
+        f"{source.downloaded} descargados de Gmail)"
+    )
+    if len(emails) >= args.max:
+        print(f"Aviso: se ha llegado al máximo de {args.max} correos; amplíalo con -n.")
 
 
 def _add_auth_arguments(parser: argparse.ArgumentParser) -> None:
