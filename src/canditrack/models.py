@@ -15,7 +15,8 @@ class Email:
     subject: str
     date: datetime
     snippet: str
-    body: str
+    body: str  # texto plano; si el correo solo trae HTML, el HTML convertido a texto
+    html_text: str = ""  # la parte HTML convertida a texto (a veces trae datos que faltan en body)
 
 
 class EventType(StrEnum):

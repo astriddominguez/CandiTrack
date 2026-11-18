@@ -52,6 +52,7 @@ def test_parse_multipart_prefers_plain_text():
 
     assert email.subject == "Entrevista"
     assert email.body == "Texto plano"
+    assert email.html_text == "HTML"
 
 
 def test_parse_html_only_is_converted_to_text():
@@ -69,6 +70,7 @@ def test_parse_message_without_body():
     email = parse_message(make_message(payload={"mimeType": "text/plain", "body": {}}))
 
     assert email.body == ""
+    assert email.html_text == ""
     assert email.sender == ""
 
 
