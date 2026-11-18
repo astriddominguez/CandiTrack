@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/astriddominguez/CandiTrack/compare/v0.4.0...v0.5.0) (2026-11-18)
+
+
+### Features
+
+* add track command with platform, period and max options ([#11](https://github.com/astriddominguez/CandiTrack/issues/11)) ([4e1d6cc](https://github.com/astriddominguez/CandiTrack/commit/4e1d6ccc24b3bf370639999c9e28f6577bc9d0c0))
+
 ## [0.4.0](https://github.com/astriddominguez/CandiTrack/compare/v0.3.0...v0.4.0) (2026-11-18)
 
 
