@@ -8,8 +8,8 @@ dicen a qué candidatura se refieren y se ignoran.
 
 import re
 from email.utils import parseaddr
-from html import unescape
 
+from canditrack.classifiers.text import normalize
 from canditrack.models import ApplicationEvent, Email, EventType
 
 PLATFORM = "infojobs"
@@ -46,7 +46,7 @@ class InfoJobsClassifier:
         if not _is_infojobs_sender(email.sender):
             return None
 
-        body = _normalize(email.body)
+        body = normalize(email.body)
         for event_type, pattern in BODY_PATTERNS:
             match = pattern.search(body)
             if match:
@@ -67,14 +67,6 @@ def _is_infojobs_sender(sender: str) -> bool:
     return local == SENDER_LOCAL_PART and (
         domain == SENDER_DOMAIN or domain.endswith("." + SENDER_DOMAIN)
     )
-
-
-def _normalize(body: str) -> str:
-    """Decodifica entidades HTML (a veces dobles: ``&amp;amp;``) y une los espacios."""
-    previous = None
-    while previous != body:
-        previous, body = body, unescape(body)
-    return " ".join(body.split())
 
 
 def _group(match: re.Match[str], name: str) -> str | None:

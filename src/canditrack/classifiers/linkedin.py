@@ -8,6 +8,7 @@ fiable porque no depende del idioma; si no, se usa el asunto.
 import re
 from email.utils import parseaddr
 
+from canditrack.classifiers.text import normalize
 from canditrack.models import ApplicationEvent, Email, EventType
 
 PLATFORM = "linkedin"
@@ -45,6 +46,16 @@ SUBJECT_PATTERNS: list[tuple[EventType, re.Pattern[str]]] = [
 ]
 
 
+# Envío: el puesto va en la primera línea no vacía tras "Se ha enviado tu solicitud a
+# <empresa>.". Los correos usan saltos de línea \r\n.
+SUBMITTED_POSITION = re.compile(
+    r"^Se ha enviado tu solicitud a [^\r\n]+\.[ \t]*(?:\r?\n[ \t]*)+(?P<position>[^\r\n]+)",
+    re.I | re.M,
+)
+# Visualización (parte HTML): "...se ha fijado en ti. <puesto> <empresa> · <lugar>".
+VIEWED_POSITION = re.compile(r"se ha fijado en ti\. (?P<job>.+?) · ", re.I)
+
+
 class LinkedInClassifier:
     """Detecta envíos, visualizaciones y rechazos de candidaturas en LinkedIn."""
 
@@ -60,16 +71,30 @@ class LinkedInClassifier:
                 continue
             match = pattern.match(subject)
             if match:
+                company = match["company"].strip()
                 return ApplicationEvent(
                     type=event_type,
                     platform=PLATFORM,
-                    company=match["company"].strip(),
-                    position=_group(match, "position"),
+                    company=company,
+                    position=_group(match, "position") or _position_from_body(email, company),
                     date=email.date,
                     email_id=email.id,
                     thread_id=email.thread_id,
                 )
         return None
+
+
+def _position_from_body(email: Email, company: str) -> str | None:
+    """El asunto de los envíos y visualizaciones no dice el puesto, pero el cuerpo sí."""
+    if submitted := SUBMITTED_POSITION.search(email.body):
+        return submitted["position"].strip()
+    if viewed := VIEWED_POSITION.search(normalize(email.html_text)):
+        # "<puesto> <empresa> · <lugar>": solo si la empresa coincide con la del asunto
+        # podemos separar con seguridad dónde acaba el puesto.
+        job = viewed["job"]
+        if job.casefold().endswith(f" {company.casefold()}"):
+            return job[: -len(company) - 1].strip()
+    return None
 
 
 def _type_from_template(body: str) -> EventType | None:

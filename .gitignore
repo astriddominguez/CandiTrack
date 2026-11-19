@@ -26,3 +26,5 @@ token.json
 .vscode/
 .idea/
 .DS_Store
+
+canditrack.toml
