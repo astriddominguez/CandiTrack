@@ -1,5 +1,5 @@
 import argparse
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -194,3 +194,54 @@ def test_invalid_config_file_stops_with_clear_error(use_source, tmp_path, capsys
     assert exit_info.value.code == 2
     assert "plataforma desconocida 'glassdoor'" in capsys.readouterr().err
     assert source.calls == []  # no llega a conectarse a Gmail
+
+
+def test_summary_counts_last_60_days_by_default(use_source, capsys, monkeypatch):
+    monkeypatch.setattr(cli, "date", FixedDate)
+    source = use_source(
+        [
+            make_email(LINKEDIN, "Ana, se ha enviado tu solicitud a Acme", day=10, msg_id="1"),
+            make_email(LINKEDIN, "Globex ha visto tu solicitud", day=11, msg_id="2"),
+        ]
+    )
+
+    cli.main(["summary", "-p", "linkedin"])
+
+    out = capsys.readouterr().out
+    assert out.startswith("CandiTrack · últimos 60 días (20 sep – 19 nov 2026)")
+    assert "LinkedIn           1      1           0         0" in out
+    assert source.calls == [("from:(jobs-noreply@linkedin.com) after:2026/09/18", 500)]
+
+
+def test_summary_with_custom_period_ignores_track_since_from_config(
+    use_source, capsys, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(cli, "date", FixedDate)
+    (tmp_path / "canditrack.toml").write_text('[track]\nsince = "1y"\n', encoding="utf-8")
+    source = use_source([])
+
+    cli.main(["summary", "-p", "indeed"])
+    cli.main(["summary", "-p", "indeed", "-s", "2w"])
+
+    out = capsys.readouterr().out
+    assert "últimos 60 días" in out  # track.since no afecta al resumen
+    assert "últimos 14 días (5 nov – 19 nov 2026)" in out
+    assert source.calls[1][0].endswith("after:2026/11/03")
+
+
+def test_summary_rejects_invalid_period(use_source, capsys):
+    source = use_source([])
+
+    with pytest.raises(SystemExit):
+        cli.main(["summary", "-s", "dos meses"])
+
+    assert "periodo no válido" in capsys.readouterr().err
+    assert source.calls == []
+
+
+class FixedDate(date):
+    """`date` con `today()` fijo para que los tests no dependan del día en que se ejecutan."""
+
+    @classmethod
+    def today(cls):
+        return cls(2026, 11, 19)

@@ -1,6 +1,7 @@
 """Registro de plataformas soportadas: su clasificador y los remitentes de sus correos."""
 
 from dataclasses import dataclass
+from datetime import date
 
 from canditrack.classifiers import indeed, infojobs, linkedin
 from canditrack.classifiers.base import Classifier
@@ -9,6 +10,7 @@ from canditrack.classifiers.base import Classifier
 @dataclass(frozen=True)
 class Platform:
     name: str
+    label: str  # nombre para mostrar
     classifier: Classifier
     # Remitentes para la búsqueda de Gmail (`from:`); acotan qué correos se descargan.
     senders: tuple[str, ...]
@@ -17,11 +19,17 @@ class Platform:
 PLATFORMS: dict[str, Platform] = {
     p.name: p
     for p in (
-        Platform(linkedin.PLATFORM, linkedin.LinkedInClassifier(), (linkedin.SENDER,)),
+        Platform(linkedin.PLATFORM, "LinkedIn", linkedin.LinkedInClassifier(), (linkedin.SENDER,)),
         # "from:pushinfojobs" cubre todos los subdominios (push., comms., notify.).
-        Platform(infojobs.PLATFORM, infojobs.InfoJobsClassifier(), (infojobs.SENDER_LOCAL_PART,)),
+        Platform(
+            infojobs.PLATFORM,
+            "InfoJobs",
+            infojobs.InfoJobsClassifier(),
+            (infojobs.SENDER_LOCAL_PART,),
+        ),
         Platform(
             indeed.PLATFORM,
+            "Indeed",
             indeed.IndeedClassifier(),
             (indeed.APPLY_SENDER, *sorted(indeed.UPDATE_SENDERS)),
         ),
@@ -29,7 +37,18 @@ PLATFORMS: dict[str, Platform] = {
 }
 
 
-def gmail_query(platforms: list[Platform], newer_than: str) -> str:
-    """Búsqueda de Gmail para los correos de esas plataformas en el periodo dado (p. ej. "30d")."""
+def gmail_query(
+    platforms: list[Platform], newer_than: str | None = None, *, after: date | None = None
+) -> str:
+    """Búsqueda de Gmail para los correos de esas plataformas.
+
+    `newer_than` es un periodo relativo ("30d", "6m"); `after`, una fecha a partir de la cual
+    buscar (Gmail interpreta la fecha en su propia zona horaria: conviene dejar margen).
+    """
     senders = " OR ".join(s for p in platforms for s in p.senders)
-    return f"from:({senders}) newer_than:{newer_than}"
+    query = f"from:({senders})"
+    if newer_than:
+        query += f" newer_than:{newer_than}"
+    if after:
+        query += f" after:{after:%Y/%m/%d}"
+    return query

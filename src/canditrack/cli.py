@@ -1,6 +1,7 @@
 """Línea de comandos de CandiTrack."""
 
 import argparse
+from datetime import date, timedelta
 from pathlib import Path
 
 from canditrack.config import (
@@ -17,10 +18,11 @@ from canditrack.mail.gmail import (
     GmailSource,
     get_credentials,
 )
-from canditrack.models import EventType
-from canditrack.platforms import PLATFORMS, gmail_query
+from canditrack.models import ApplicationEvent, EventType
+from canditrack.platforms import PLATFORMS, Platform, gmail_query
 from canditrack.storage import EmailCache
-from canditrack.tracking import build_applications
+from canditrack.summary import DEFAULT_PERIOD, format_summary, period_start, summarize
+from canditrack.tracking import Application, build_applications
 
 STATUS_LABELS = {
     EventType.SUBMITTED: "enviada",
@@ -58,7 +60,6 @@ def main(argv: list[str] | None = None) -> None:
     fetch.add_argument("-n", "--max", type=int, default=10, help="Máximo de correos")
     _add_auth_arguments(fetch)
 
-    # Sin valor por defecto (None): si no se pasan, se usa el archivo de configuración.
     defaults = TrackConfig()
     track = sub.add_parser(
         "track",
@@ -66,88 +67,145 @@ def main(argv: list[str] | None = None) -> None:
         description=f"Los valores por defecto se pueden cambiar en {DEFAULT_CONFIG_PATH}.",
     )
     track.add_argument(
-        "-p",
-        "--platform",
-        action="append",
-        choices=sorted(PLATFORMS),
-        help="Plataforma a revisar; se puede repetir (por defecto, todas)",
-    )
-    track.add_argument(
         "-s",
         "--since",
         type=parse_period,
         help=f"Periodo a revisar: 7d, 4w, 6m, 1y... (por defecto, {defaults.since})",
     )
-    track.add_argument(
-        "-n",
-        "--max",
-        type=positive_int,
-        help=f"Máximo de correos a leer (por defecto, {defaults.max})",
+    _add_selection_arguments(track)
+
+    summary = sub.add_parser(
+        "summary",
+        help="Resumen: candidaturas enviadas en un periodo y en qué estado están",
+        description=f"Los valores por defecto se pueden cambiar en {DEFAULT_CONFIG_PATH}.",
     )
-    track.add_argument(
-        "--db",
-        type=Path,
-        help=f"Base de datos local con los correos ya descargados (por defecto, {defaults.db})",
+    summary.add_argument(
+        "-s",
+        "--since",
+        type=parse_period,
+        help=f"Periodo hasta hoy: 7d, 4w, 3m... (por defecto, {DEFAULT_PERIOD})",
     )
-    track.add_argument(
-        "--config",
-        type=Path,
-        help=f"Archivo de configuración (por defecto, {DEFAULT_CONFIG_PATH} si existe)",
-    )
-    _add_auth_arguments(track)
+    _add_selection_arguments(summary)
 
     args = parser.parse_args(argv)
-
-    if args.command == "track":
-        try:
-            config = load_config(args.config)
-        except ConfigError as e:
-            track.error(str(e))
-        _apply_config(args, config.track)
+    today = date.today()
+    if args.command != "fetch":
+        _resolve_options(args, track if args.command == "track" else summary)
 
     source = GmailSource.from_credentials(get_credentials(args.credentials, args.token))
 
     if args.command == "fetch":
-        for email in source.fetch(args.query, args.max):
-            local_date = email.date.astimezone()
-            print(f"{local_date:%Y-%m-%d %H:%M}  {email.sender[:40]:<40}  {email.subject}")
+        _run_fetch(source, args)
+        return
 
-    elif args.command == "track":
-        with EmailCache(args.db) as cache:
-            _track(CachedMailSource(source, cache), args)
+    with EmailCache(args.db) as cache:
+        cached = CachedMailSource(source, cache)
+        if args.command == "track":
+            read = _run_track(cached, args)
+        else:
+            read = _run_summary(cached, args, today)
 
-
-def _apply_config(args: argparse.Namespace, config: TrackConfig) -> None:
-    """Rellena las opciones que no se han pasado con lo que diga la configuración."""
-    args.platform = args.platform or list(config.platforms) or sorted(PLATFORMS)
-    args.since = args.since or config.since
-    args.max = args.max or config.max
-    args.db = args.db or config.db
+    if read >= args.max:
+        print(f"Aviso: se ha llegado al máximo de {args.max} correos; amplíalo con -n.")
 
 
-def _track(source: CachedMailSource, args: argparse.Namespace) -> None:
+def _resolve_options(args: argparse.Namespace, subparser: argparse.ArgumentParser) -> None:
+    """Completa las opciones que no se han pasado con la configuración."""
+    try:
+        config = load_config(args.config)
+    except ConfigError as e:
+        subparser.error(str(e))
+    _apply_config(args, config.track)
+
+
+def _run_fetch(source: GmailSource, args: argparse.Namespace) -> None:
+    for email in source.fetch(args.query, args.max):
+        local_date = email.date.astimezone()
+        print(f"{local_date:%Y-%m-%d %H:%M}  {email.sender[:40]:<40}  {email.subject}")
+
+
+def _run_track(source: CachedMailSource, args: argparse.Namespace) -> int:
     platforms = [PLATFORMS[name] for name in args.platform]
-    emails = source.fetch(gmail_query(platforms, args.since), args.max)
-
-    events = []
-    for email in emails:
-        for platform in platforms:
-            if event := platform.classifier.classify(email):
-                events.append(event)
-                break
-
-    applications = build_applications(events)
+    query = gmail_query(platforms, args.since)
+    applications, read = _load_applications(source, platforms, query, args.max)
     for app in applications:
         print(
             f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<8}  "
             f"{STATUS_LABELS[app.status]:<9}  {app.company[:35]:<35}  {app.position or '-'}"
         )
     print(
-        f"\n{len(applications)} candidaturas ({len(emails)} correos revisados, "
+        f"\n{len(applications)} candidaturas ({read} correos revisados, "
         f"{source.downloaded} descargados de Gmail)"
     )
-    if len(emails) >= args.max:
-        print(f"Aviso: se ha llegado al máximo de {args.max} correos; amplíalo con -n.")
+    return read
+
+
+def _run_summary(source: CachedMailSource, args: argparse.Namespace, today: date) -> int:
+    platforms = [PLATFORMS[name] for name in args.platform]
+    # Gmail interpreta "after:" en su zona horaria: dos días de margen, y luego se filtra
+    # por la fecha local. Se busca hasta hoy para conocer el estado actual de cada una.
+    query = gmail_query(platforms, after=period_start(args.since, today) - timedelta(days=2))
+    applications, read = _load_applications(source, platforms, query, args.max)
+    labels = {p.name: p.label for p in platforms}
+    print(format_summary(summarize(applications, labels, args.since, today)))
+    return read
+
+
+def _add_selection_arguments(parser: argparse.ArgumentParser) -> None:
+    """Opciones comunes de `track` y `summary`.
+
+    Sin valor por defecto (None): si no se pasan, se usa el archivo de configuración.
+    """
+    defaults = TrackConfig()
+    parser.add_argument(
+        "-p",
+        "--platform",
+        action="append",
+        choices=sorted(PLATFORMS),
+        help="Plataforma a revisar; se puede repetir (por defecto, todas)",
+    )
+    parser.add_argument(
+        "-n",
+        "--max",
+        type=positive_int,
+        help=f"Máximo de correos a leer (por defecto, {defaults.max})",
+    )
+    parser.add_argument(
+        "--db",
+        type=Path,
+        help=f"Base de datos local con los correos ya descargados (por defecto, {defaults.db})",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help=f"Archivo de configuración (por defecto, {DEFAULT_CONFIG_PATH} si existe)",
+    )
+    _add_auth_arguments(parser)
+
+
+def _apply_config(args: argparse.Namespace, config: TrackConfig) -> None:
+    """Rellena las opciones que no se han pasado con lo que diga la configuración."""
+    args.platform = args.platform or list(config.platforms) or sorted(PLATFORMS)
+    if args.command == "track":
+        args.since = args.since or config.since
+    else:
+        args.since = args.since or DEFAULT_PERIOD
+    args.max = args.max or config.max
+    args.db = args.db or config.db
+
+
+def _load_applications(
+    source: CachedMailSource, platforms: list[Platform], query: str, max_results: int
+) -> tuple[list[Application], int]:
+    """Descarga (o lee de la caché), clasifica y agrupa. Devuelve (candidaturas, correos)."""
+    emails = source.fetch(query, max_results)
+    events: list[ApplicationEvent] = []
+    for email in emails:
+        for platform in platforms:
+            if event := platform.classifier.classify(email):
+                events.append(event)
+                break
+    return build_applications(events), len(emails)
 
 
 def _add_auth_arguments(parser: argparse.ArgumentParser) -> None:
