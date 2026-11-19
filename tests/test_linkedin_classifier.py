@@ -11,7 +11,7 @@ REJECTED_BODY = "Tu actualización de Acme\nhttps://www.linkedin.com/help?lipi=u
 VIEWED_BODY = "https://www.linkedin.com/?trk=eml-email_jobs_job_application_viewed_01-header"
 
 
-def make_email(subject: str, body: str = "", sender: str = SENDER) -> Email:
+def make_email(subject: str, body: str = "", sender: str = SENDER, html_text: str = "") -> Email:
     return Email(
         id="msg-1",
         thread_id="thr-1",
@@ -20,6 +20,7 @@ def make_email(subject: str, body: str = "", sender: str = SENDER) -> Email:
         date=DATE,
         snippet="",
         body=body,
+        html_text=html_text,
     )
 
 
@@ -114,3 +115,61 @@ def test_ignores_other_senders(sender):
     email = make_email("Ana, se ha enviado tu solicitud a Acme", sender=sender)
 
     assert classifier.classify(email) is None
+
+
+SUBMITTED_BODY = (
+    "Se ha enviado tu solicitud a Acme Corp S.L..\r\n\r\n"
+    "Backend Developer (Python & IA)\r\n"
+    "Acme Corp S.L.\r\n"
+    "Barcelona\r\n"
+    "Ver anuncio de empleo: https://www.linkedin.com/jobs/view/1\r\n"
+    "Descubre otros empleos similares que podrían interesarte\r\n"
+    "Data Engineer\r\nGlobex\r\n"
+)
+
+
+def test_submitted_takes_position_from_body():
+    event = classifier.classify(
+        make_email("Ana, se ha enviado tu solicitud a Acme Corp S.L.", SUBMITTED_BODY)
+    )
+
+    assert event is not None
+    assert event.type is EventType.SUBMITTED
+    assert event.company == "Acme Corp S.L."
+    assert event.position == "Backend Developer (Python & IA)"
+
+
+VIEWED_HTML = (
+    "Acme ha visto tu solicitud \u034f \u034f Han visto tu solicitud ¡Muy bien! "
+    "El equipo de selección de Acme se ha fijado en ti. AI Engineer &amp; MLOps Acme · España "
+    "Solicitado el 16 nov Descubre empleos similares Data Engineer Globex · España"
+)
+
+
+def test_viewed_takes_position_from_html():
+    event = classifier.classify(
+        make_email("Acme ha visto tu solicitud", VIEWED_BODY, html_text=VIEWED_HTML)
+    )
+
+    assert event is not None
+    assert event.type is EventType.VIEWED
+    assert event.position == "AI Engineer & MLOps"
+
+
+def test_viewed_without_matching_company_in_html_has_no_position():
+    html = VIEWED_HTML.replace("MLOps Acme ·", "MLOps Acme Iberia ·")
+
+    event = classifier.classify(
+        make_email("Acme ha visto tu solicitud", VIEWED_BODY, html_text=html)
+    )
+
+    assert event is not None
+    assert event.position is None
+
+
+def test_submitted_without_position_in_body_still_detected():
+    event = classifier.classify(make_email("Ana, your application was sent to Globex"))
+
+    assert event is not None
+    assert event.type is EventType.SUBMITTED
+    assert event.position is None

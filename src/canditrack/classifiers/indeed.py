@@ -10,8 +10,8 @@
 
 import re
 from email.utils import parseaddr
-from html import unescape
 
+from canditrack.classifiers.text import normalize
 from canditrack.models import ApplicationEvent, Email, EventType
 
 PLATFORM = "indeed"
@@ -29,16 +29,13 @@ REJECTED_SUBJECT = re.compile(r"^Actualización sobre tu solicitud en (?P<compan
 # "<puesto> en <empresa>"; el cuerpo repite el texto, así que nos quedamos con la primera.
 REJECTED_BODY = re.compile(r"solicitud para el puesto de (?P<job>.+?)\. Lamentablemente", re.I)
 
-# Caracteres invisibles de relleno que Indeed mete en los correos.
-_REMOVE_INVISIBLE = dict.fromkeys(map(ord, "­͏​‌‍⁠﻿"))
-
 
 class IndeedClassifier:
     """Detecta solicitudes enviadas, vistas y rechazadas en Indeed."""
 
     def classify(self, email: Email) -> ApplicationEvent | None:
         sender = parseaddr(email.sender)[1].lower()
-        subject = _normalize(email.subject)
+        subject = normalize(email.subject)
 
         if sender == APPLY_SENDER:
             return _submitted(email, subject) or _viewed(email, subject)
@@ -54,9 +51,9 @@ def _submitted(email: Email, subject: str) -> ApplicationEvent | None:
     position = match["position"].strip()
 
     company = None
-    if html := SUBMITTED_HTML.search(_normalize(email.html_text)):
+    if html := SUBMITTED_HTML.search(normalize(email.html_text)):
         company = html["company"]
-    elif plain := SUBMITTED_PLAIN.search(_normalize(email.body)):
+    elif plain := SUBMITTED_PLAIN.search(normalize(email.body)):
         # "<puesto> en <empresa> en <lugar>": quitamos el puesto y nos quedamos con lo
         # que hay hasta el último " en " (el lugar).
         job = plain["job"].removeprefix(f"{position} en ")
@@ -70,13 +67,13 @@ def _viewed(email: Email, subject: str) -> ApplicationEvent | None:
     match = VIEWED_SUBJECT.match(subject)
     if not match:
         return None
-    body = VIEWED_BODY.search(_normalize(email.body))
+    body = VIEWED_BODY.search(normalize(email.body))
     return _event(EventType.VIEWED, email, match["company"], body and body["position"])
 
 
 def _rejected(email: Email, subject: str) -> ApplicationEvent | None:
     subject_match = REJECTED_SUBJECT.match(subject)
-    body_match = REJECTED_BODY.search(_normalize(email.body))
+    body_match = REJECTED_BODY.search(normalize(email.body))
     if not subject_match or not body_match:
         return None
     company = subject_match["company"]
@@ -96,11 +93,3 @@ def _event(
         email_id=email.id,
         thread_id=email.thread_id,
     )
-
-
-def _normalize(text: str) -> str:
-    """Decodifica entidades HTML, quita caracteres invisibles y une los espacios."""
-    previous = None
-    while previous != text:
-        previous, text = text, unescape(text)
-    return " ".join(text.translate(_REMOVE_INVISIBLE).split())
