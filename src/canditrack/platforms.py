@@ -1,10 +1,12 @@
 """Registro de plataformas soportadas: su clasificador y los remitentes de sus correos."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 
 from canditrack.classifiers import indeed, infojobs, linkedin
 from canditrack.classifiers.base import Classifier
+from canditrack.models import ApplicationEvent, Email
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,20 @@ PLATFORMS: dict[str, Platform] = {
         ),
     )
 }
+
+
+def classify_emails(
+    emails: Iterable[Email], platforms: Iterable[Platform]
+) -> list[ApplicationEvent]:
+    """Pasa cada correo por los clasificadores; se queda con el primer evento detectado."""
+    platforms = list(platforms)
+    events = []
+    for email in emails:
+        for platform in platforms:
+            if event := platform.classifier.classify(email):
+                events.append(event)
+                break
+    return events
 
 
 def gmail_query(

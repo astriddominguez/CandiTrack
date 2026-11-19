@@ -62,6 +62,11 @@ class EmailCache:
                 found[email.id] = email
         return found
 
+    def all(self) -> list[Email]:
+        """Todos los correos guardados, del más reciente al más antiguo."""
+        rows = self._conn.execute(f"SELECT {', '.join(_COLUMNS)} FROM emails ORDER BY date DESC")
+        return [_from_row(row) for row in rows]
+
     def save_many(self, emails: Iterable[Email]) -> None:
         """Guarda (o sustituye) los correos, todos en una misma transacción."""
         with self._conn:

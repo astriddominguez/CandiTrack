@@ -57,6 +57,32 @@ Total            214    166          37        11
 Solo cuentan las candidaturas enviadas dentro del periodo, con su estado de hoy. Admite las
 mismas opciones `-p`, `-n`, `--db` y `--config` que `track`.
 
+### API REST
+
+`canditrack serve` arranca una API REST (FastAPI) que sirve los mismos datos. Lee solo la
+base de datos local, sin conectar con Gmail: para actualizarla, ejecuta `canditrack track`.
+
+```bash
+uv run canditrack serve    # http://127.0.0.1:8000
+```
+
+La especificación **OpenAPI** se genera automáticamente: `/openapi.json`, con documentación
+interactiva en `/docs` (Swagger UI) y `/redoc`.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/v1/health` | Estado del servicio y versión |
+| `GET` | `/api/v1/platforms` | Plataformas soportadas |
+| `GET` | `/api/v1/applications` | Candidaturas; filtros `platform`, `status`, `since` y paginación `limit`/`offset` |
+| `GET` | `/api/v1/applications/{id}` | Una candidatura con todos sus eventos (404 si no existe) |
+| `GET` | `/api/v1/summary` | Resumen del periodo (`since`, por defecto `60d`; `platform` repetible) |
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/applications?status=rejected&limit=5"
+```
+
+Por defecto solo escucha en `127.0.0.1` (este equipo); usa `--host` y `--port` para cambiarlo.
+
 ### Configuración
 
 Para no repetir opciones, copia [canditrack.example.toml](canditrack.example.toml) como
