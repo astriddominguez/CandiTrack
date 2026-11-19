@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/astriddominguez/CandiTrack/compare/v0.8.0...v0.9.0) (2026-11-19)
+
+
+### Features
+
+* add REST API with FastAPI and OpenAPI docs ([#21](https://github.com/astriddominguez/CandiTrack/issues/21)) ([3e8d96f](https://github.com/astriddominguez/CandiTrack/commit/3e8d96fd2fe5ae3c33180c1113494f554ae28770))
+
 ## [0.8.0](https://github.com/astriddominguez/CandiTrack/compare/v0.7.1...v0.8.0) (2026-11-19)
 
 
