@@ -34,6 +34,29 @@ ruta que indiques con `--db`). La primera ejecución puede tardar unos minutos (
 cuántos correos se pueden leer por minuto); las siguientes solo descargan los correos nuevos.
 El archivo contiene tus correos: está en `.gitignore` y no debe compartirse.
 
+### Resumen
+
+`canditrack summary` cuenta las candidaturas **enviadas** en los últimos días, por plataforma,
+y en qué estado están ahora (vivas, rechazadas o con el proceso cerrado):
+
+```bash
+uv run canditrack summary          # últimos 60 días hasta hoy
+uv run canditrack summary -s 30d   # otro periodo: 7d, 4w, 3m, 1y...
+```
+
+```
+CandiTrack · últimos 60 días (20 sep – 19 nov 2026)
+
+          Postuladas  Vivas  Rechazadas  Cerradas
+LinkedIn         131     94          37         0
+InfoJobs          51     40           0        11
+Indeed            32     32           0         0
+Total            214    166          37        11
+```
+
+Solo cuentan las candidaturas enviadas dentro del periodo, con su estado de hoy. Admite las
+mismas opciones `-p`, `-n`, `--db` y `--config` que `track`.
+
 ### Configuración
 
 Para no repetir opciones, copia [canditrack.example.toml](canditrack.example.toml) como

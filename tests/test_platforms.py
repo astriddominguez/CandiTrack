@@ -1,3 +1,5 @@
+from datetime import date
+
 from canditrack.platforms import PLATFORMS, gmail_query
 
 
@@ -18,3 +20,13 @@ def test_gmail_query_with_indeed_includes_update_senders():
     assert query == (
         "from:(indeedapply@indeed.com OR no-reply@indeed.com OR noreply@indeed.com) newer_than:6m"
     )
+
+
+def test_gmail_query_with_start_date():
+    query = gmail_query([PLATFORMS["linkedin"]], after=date(2026, 10, 30))
+
+    assert query == "from:(jobs-noreply@linkedin.com) after:2026/10/30"
+
+
+def test_platforms_have_display_labels():
+    assert [p.label for p in PLATFORMS.values()] == ["LinkedIn", "InfoJobs", "Indeed"]
