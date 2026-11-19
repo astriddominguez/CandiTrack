@@ -18,8 +18,8 @@ from canditrack.mail.gmail import (
     GmailSource,
     get_credentials,
 )
-from canditrack.models import ApplicationEvent, EventType
-from canditrack.platforms import PLATFORMS, Platform, gmail_query
+from canditrack.models import EventType
+from canditrack.platforms import PLATFORMS, Platform, classify_emails, gmail_query
 from canditrack.storage import EmailCache
 from canditrack.summary import DEFAULT_PERIOD, format_summary, period_start, summarize
 from canditrack.tracking import Application, build_applications
@@ -87,7 +87,27 @@ def main(argv: list[str] | None = None) -> None:
     )
     _add_selection_arguments(summary)
 
+    serve = sub.add_parser(
+        "serve",
+        help="Arranca la API REST (documentación en /docs)",
+        description="La API lee la base de datos local; no necesita acceso a Gmail.",
+    )
+    serve.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Dirección en la que escuchar (por defecto, 127.0.0.1: solo este equipo)",
+    )
+    serve.add_argument("--port", type=positive_int, default=8000, help="Puerto (por defecto, 8000)")
+    serve.add_argument(
+        "--db", type=Path, help="Base de datos local (por defecto, la de la configuración)"
+    )
+    serve.add_argument("--config", type=Path, help="Archivo de configuración")
+
     args = parser.parse_args(argv)
+    if args.command == "serve":
+        _run_serve(args, serve)
+        return
+
     today = date.today()
     if args.command != "fetch":
         _resolve_options(args, track if args.command == "track" else summary)
@@ -116,6 +136,21 @@ def _resolve_options(args: argparse.Namespace, subparser: argparse.ArgumentParse
     except ConfigError as e:
         subparser.error(str(e))
     _apply_config(args, config.track)
+
+
+def _run_serve(args: argparse.Namespace, subparser: argparse.ArgumentParser) -> None:
+    # Importaciones aquí: el resto de comandos no necesita cargar FastAPI ni uvicorn.
+    import uvicorn
+
+    from canditrack.api import create_app
+
+    try:
+        config = load_config(args.config)
+    except ConfigError as e:
+        subparser.error(str(e))
+    db = args.db or config.track.db
+    print(f"Base de datos: {db}  ·  documentación: http://{args.host}:{args.port}/docs")
+    uvicorn.run(create_app(db), host=args.host, port=args.port)
 
 
 def _run_fetch(source: GmailSource, args: argparse.Namespace) -> None:
@@ -199,13 +234,7 @@ def _load_applications(
 ) -> tuple[list[Application], int]:
     """Descarga (o lee de la caché), clasifica y agrupa. Devuelve (candidaturas, correos)."""
     emails = source.fetch(query, max_results)
-    events: list[ApplicationEvent] = []
-    for email in emails:
-        for platform in platforms:
-            if event := platform.classifier.classify(email):
-                events.append(event)
-                break
-    return build_applications(events), len(emails)
+    return build_applications(classify_emails(emails, platforms)), len(emails)
 
 
 def _add_auth_arguments(parser: argparse.ArgumentParser) -> None:

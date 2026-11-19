@@ -80,3 +80,13 @@ def test_same_company_on_different_platforms_are_different_applications():
 
 def test_no_events():
     assert build_applications([]) == []
+
+
+def test_application_id_is_stable_and_ignores_case_and_spaces():
+    [a] = build_applications([event(EventType.SUBMITTED, 1, company="Acme", position="Dev")])
+    [b] = build_applications([event(EventType.REJECTED, 9, company=" ACME ", position="dev")])
+    [c] = build_applications([event(EventType.SUBMITTED, 1, company="Acme", position="QA")])
+
+    assert a.id == b.id
+    assert a.id != c.id
+    assert len(a.id) == 12

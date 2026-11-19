@@ -72,3 +72,12 @@ def test_newer_schema_is_rejected(tmp_path):
 
     with pytest.raises(RuntimeError, match="Actualiza CandiTrack"):
         EmailCache(path)
+
+
+def test_all_returns_every_email_most_recent_first(tmp_path):
+    old = make_email("old", date=datetime(2026, 1, 1, tzinfo=UTC))
+    new = make_email("new", date=datetime(2026, 11, 1, tzinfo=UTC))
+    with EmailCache(tmp_path / "c.db") as cache:
+        cache.save_many([old, new])
+
+        assert cache.all() == [new, old]

@@ -1,6 +1,7 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
-from canditrack.platforms import PLATFORMS, gmail_query
+from canditrack.models import Email
+from canditrack.platforms import PLATFORMS, classify_emails, gmail_query
 
 
 def test_registry_has_all_platforms():
@@ -30,3 +31,18 @@ def test_gmail_query_with_start_date():
 
 def test_platforms_have_display_labels():
     assert [p.label for p in PLATFORMS.values()] == ["LinkedIn", "InfoJobs", "Indeed"]
+
+
+def test_classify_emails_uses_the_matching_platform():
+    def email(sender, subject):
+        return Email("1", "t", sender, subject, datetime(2026, 11, 1, tzinfo=UTC), "", "")
+
+    events = classify_emails(
+        [
+            email("jobs-noreply@linkedin.com", "Acme ha visto tu solicitud"),
+            email("amigo@example.com", "Hola"),
+        ],
+        PLATFORMS.values(),
+    )
+
+    assert [(e.platform, e.company) for e in events] == [("linkedin", "Acme")]

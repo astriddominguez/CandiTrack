@@ -1,5 +1,6 @@
 """Agrupa los eventos detectados en candidaturas y calcula su estado actual."""
 
+import hashlib
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -18,6 +19,16 @@ class Application:
     status: EventType
     updated: datetime
     events: tuple[ApplicationEvent, ...]
+
+    @property
+    def id(self) -> str:
+        """Identificador estable: el mismo mientras no cambien plataforma, empresa y puesto.
+
+        Las candidaturas se recalculan en cada ejecución (no se guardan), así que no hay un
+        ID de base de datos: se deriva de lo que identifica a la candidatura.
+        """
+        key = f"{self.platform}|{_key(self.company)}|{_key(self.position or '')}"
+        return hashlib.sha256(key.encode()).hexdigest()[:12]
 
 
 def build_applications(events: Iterable[ApplicationEvent]) -> list[Application]:
