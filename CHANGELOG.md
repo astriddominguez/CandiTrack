@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/astriddominguez/CandiTrack/compare/v0.7.1...v0.8.0) (2026-11-19)
+
+
+### Features
+
+* add summary command for recent applications ([#19](https://github.com/astriddominguez/CandiTrack/issues/19)) ([e2b00eb](https://github.com/astriddominguez/CandiTrack/commit/e2b00eb28b9b6891d7d6e8ad15d6fb8444753896))
+
 ## [0.7.1](https://github.com/astriddominguez/CandiTrack/compare/v0.7.0...v0.7.1) (2026-11-19)
 
 
