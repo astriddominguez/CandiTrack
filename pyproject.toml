@@ -1,6 +1,6 @@
 [project]
 name = "canditrack"
-version = "0.7.0"
+version = "0.7.1"
 description = "Seguimiento inteligente de candidaturas laborales conectado a Gmail"
 readme = "README.md"
 requires-python = ">=3.11"

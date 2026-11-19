@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/astriddominguez/CandiTrack/compare/v0.7.0...v0.7.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* take LinkedIn job title from the email body ([#17](https://github.com/astriddominguez/CandiTrack/issues/17)) ([bb438af](https://github.com/astriddominguez/CandiTrack/commit/bb438af765ca05182173148156674fa90298c3bf))
+
 ## [0.7.0](https://github.com/astriddominguez/CandiTrack/compare/v0.6.0...v0.7.0) (2026-11-18)
 
 
