@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/astriddominguez/CandiTrack/compare/v0.10.0...v0.11.0) (2026-11-20)
+
+
+### Features
+
+* add per-platform stats command and API endpoint ([#25](https://github.com/astriddominguez/CandiTrack/issues/25)) ([5cd85e5](https://github.com/astriddominguez/CandiTrack/commit/5cd85e5a658184627df75f154dcd7f68de32e28e))
+
 ## [0.10.0](https://github.com/astriddominguez/CandiTrack/compare/v0.9.0...v0.10.0) (2026-11-20)
 
 
