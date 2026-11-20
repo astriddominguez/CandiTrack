@@ -100,7 +100,7 @@ def format_summary(summary: Summary) -> str:
     rows = [*summary.rows.items(), ("Total", summary.total)]
     width = max(len(name) for name, _ in rows)
 
-    lines = [f"CandiTrack · {_describe(summary)}", ""]
+    lines = [f"CandiTrack · {describe_period(summary.period, summary.start, summary.end)}", ""]
     lines.append(f"{header[0]:<{width}}  " + "  ".join(header[1:]))
     for name, c in rows:
         values = (c.applied, c.alive, c.rejected, c.closed)
@@ -110,12 +110,11 @@ def format_summary(summary: Summary) -> str:
     return "\n".join(lines)
 
 
-def _describe(summary: Summary) -> str:
+def describe_period(period: str, start: date, end: date) -> str:
     """ "últimos 60 días (20 sep – 19 nov 2026)"."""
-    amount, unit = int(summary.period[:-1]), summary.period[-1]
+    amount, unit = int(period[:-1]), period[-1]
     singular, plural = _UNITS[unit]
     span = f"último {singular}" if amount == 1 else f"últimos {amount} {plural}"
-    start, end = summary.start, summary.end
     start_text = f"{start.day} {_MONTHS[start.month - 1]}"
     if start.year != end.year:
         start_text += f" {start.year}"

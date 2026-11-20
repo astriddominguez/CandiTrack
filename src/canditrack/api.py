@@ -17,7 +17,8 @@ from pydantic import BaseModel, Field
 
 from canditrack.config import normalize_period
 from canditrack.models import EventType
-from canditrack.platforms import PLATFORMS, classify_emails
+from canditrack.platforms import PLATFORMS, Platform, classify_emails
+from canditrack.stats import DEFAULT_STALE_DAYS, PlatformStats, compute_stats
 from canditrack.storage import DEFAULT_DB_PATH, EmailCache
 from canditrack.summary import DEFAULT_PERIOD, Counts, period_start, summarize
 from canditrack.tracking import Application, build_applications
@@ -134,6 +135,42 @@ class SummaryOut(BaseModel):
     end: date
     platforms: list[SummaryRow]
     total: SummaryRow
+
+
+class StatsRow(BaseModel):
+    """Estadísticas de una plataforma (o del total)."""
+
+    platform: PlatformName | None = Field(description="`null` en la fila del total.")
+    label: str = Field(examples=["LinkedIn"])
+    sent: int = Field(description="Candidaturas enviadas en el periodo.")
+    responded: int = Field(description="De ellas, vistas o rechazadas por la empresa.")
+    rejected: int = Field(description="De ellas, rechazadas (estado actual).")
+    no_response: int = Field(
+        description="De ellas, solo enviadas y sin novedades en `stale_days` días o más."
+    )
+    median_days_to_response: float | None = Field(
+        description="Mediana de días entre el envío y la primera respuesta; `null` si no hay.",
+        examples=[3.2],
+    )
+    notifies_views: bool | None = Field(
+        description="Si la plataforma avisa por correo cuando ven tu candidatura. Si no, "
+        "`responded` sale más bajo de lo real. `null` en el total."
+    )
+    notifies_rejections: bool | None = Field(
+        description="Si la plataforma avisa por correo de los rechazos. Si no, `rejected` y "
+        "`responded` salen más bajos de lo real. `null` en el total."
+    )
+
+
+class StatsOut(BaseModel):
+    """Estadísticas por plataforma (como `canditrack stats`)."""
+
+    period: str = Field(examples=["60d"])
+    start: date
+    end: date
+    stale_days: int = Field(examples=[21])
+    platforms: list[StatsRow]
+    total: StatsRow
 
 
 # --- Aplicación ---
@@ -254,6 +291,49 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
             total=_summary_row(None, "Total", summary.total),
         )
 
+    @router.get(
+        "/stats",
+        tags=["resumen"],
+        summary="Estadísticas por plataforma",
+        description=(
+            "Respuestas, rechazos, candidaturas sin noticias y tiempo hasta la primera "
+            "respuesta, sobre las candidaturas **enviadas** en el periodo. Ojo con las "
+            "plataformas con `notifies_views` o `notifies_rejections` a `false`: sus cifras "
+            "de respuesta salen más bajas de lo real."
+        ),
+    )
+    def get_stats(
+        request: Request,
+        since: Annotated[
+            str,
+            Query(description="Periodo hasta hoy: 7d, 4w, 3m, 1y...", pattern=PERIOD_PATTERN),
+        ] = DEFAULT_PERIOD,
+        stale_days: Annotated[
+            int,
+            Query(ge=1, le=365, description="Días sin novedades para contar como sin respuesta."),
+        ] = DEFAULT_STALE_DAYS,
+        platform: Annotated[
+            list[PlatformName] | None,
+            Query(description="Plataformas a incluir; se puede repetir (por defecto, todas)."),
+        ] = None,
+    ) -> StatsOut:
+        names = list(dict.fromkeys(platform)) if platform else list(PLATFORMS)
+        stats = compute_stats(
+            _load_applications(request.app.state.db_path),
+            [PLATFORMS[name] for name in names],
+            normalize_period(since),
+            date.today(),
+            stale_days,
+        )
+        return StatsOut(
+            period=stats.period,
+            start=stats.start,
+            end=stats.end,
+            stale_days=stats.stale_days,
+            platforms=[_stats_row(stats.platforms[name], row) for name, row in stats.rows.items()],
+            total=_stats_row(None, stats.total),
+        )
+
     app.include_router(router)
     return app
 
@@ -274,3 +354,21 @@ def _load_applications(db_path: Path) -> list[Application]:
     with EmailCache(db_path) as cache:
         emails = cache.all()
     return build_applications(classify_emails(emails, PLATFORMS.values()))
+
+
+def _stats_row(platform: Platform | None, stats: PlatformStats) -> StatsRow:
+    return StatsRow(
+        platform=PlatformName(platform.name) if platform else None,
+        label=platform.label if platform else "Total",
+        sent=stats.sent,
+        responded=stats.responded,
+        rejected=stats.rejected,
+        no_response=stats.no_response,
+        median_days_to_response=(
+            round(stats.median_days_to_response, 1)
+            if stats.median_days_to_response is not None
+            else None
+        ),
+        notifies_views=platform.notifies_views if platform else None,
+        notifies_rejections=platform.notifies_rejections if platform else None,
+    )

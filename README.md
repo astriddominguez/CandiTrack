@@ -57,6 +57,30 @@ Total            214    166          37        11
 Solo cuentan las candidaturas enviadas dentro del periodo, con su estado de hoy. Admite las
 mismas opciones `-p`, `-n`, `--db` y `--config` que `track`.
 
+### Estadísticas
+
+`canditrack stats` compara las plataformas: cuántas candidaturas reciben respuesta, cuántas
+se rechazan, cuántas siguen sin noticias y cuánto tarda la primera respuesta.
+
+```bash
+uv run canditrack stats                # últimos 60 días
+uv run canditrack stats -s 30d --stale 2w
+```
+
+```
+             Enviadas  Con respuesta  Rechazadas  Sin respuesta  Días hasta respuesta
+LinkedIn          131       54 (41%)    39 (30%)       51 (39%)                     3
+Tecnoempleo        10        3 (30%)      0 (0%)         0 (0%)                    <1
+```
+
+- **Con respuesta**: la empresa vio la candidatura o la rechazó.
+- **Sin respuesta**: solo enviada y sin novedades en 21 días o más (`--stale`).
+- **Días hasta respuesta**: mediana entre el envío y la primera respuesta.
+
+No todas las plataformas avisan por correo de lo mismo (InfoJobs e Indeed no avisan de
+vistas ni rechazos; Tecnoempleo, de rechazos): la salida lo indica, porque sus cifras de
+respuesta salen más bajas de lo real.
+
 ### API REST
 
 `canditrack serve` arranca una API REST (FastAPI) que sirve los mismos datos. Lee solo la
@@ -76,6 +100,7 @@ interactiva en `/docs` (Swagger UI) y `/redoc`.
 | `GET` | `/api/v1/applications` | Candidaturas; filtros `platform`, `status`, `since` y paginación `limit`/`offset` |
 | `GET` | `/api/v1/applications/{id}` | Una candidatura con todos sus eventos (404 si no existe) |
 | `GET` | `/api/v1/summary` | Resumen del periodo (`since`, por defecto `60d`; `platform` repetible) |
+| `GET` | `/api/v1/stats` | Estadísticas por plataforma (`since`, `stale_days`, `platform`) |
 
 ```bash
 curl "http://127.0.0.1:8000/api/v1/applications?status=rejected&limit=5"
