@@ -5,7 +5,7 @@ from canditrack.platforms import PLATFORMS, classify_emails, gmail_query
 
 
 def test_registry_has_all_platforms():
-    assert sorted(PLATFORMS) == ["indeed", "infojobs", "linkedin"]
+    assert sorted(PLATFORMS) == ["indeed", "infojobs", "linkedin", "tecnoempleo"]
     assert all(p.senders for p in PLATFORMS.values())
 
 
@@ -30,7 +30,12 @@ def test_gmail_query_with_start_date():
 
 
 def test_platforms_have_display_labels():
-    assert [p.label for p in PLATFORMS.values()] == ["LinkedIn", "InfoJobs", "Indeed"]
+    assert [p.label for p in PLATFORMS.values()] == [
+        "LinkedIn",
+        "InfoJobs",
+        "Indeed",
+        "Tecnoempleo",
+    ]
 
 
 def test_classify_emails_uses_the_matching_platform():

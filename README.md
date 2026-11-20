@@ -26,7 +26,7 @@ uv run canditrack track -p linkedin -p indeed  # solo esas plataformas
 uv run canditrack track --since 6m -n 1000     # periodo (7d, 4w, 6m, 1y...) y máximo de correos
 ```
 
-Plataformas soportadas: `linkedin`, `infojobs` e `indeed`. Solo se descargan los correos de
+Plataformas soportadas: `linkedin`, `infojobs`, `indeed` y `tecnoempleo`. Solo se descargan los correos de
 sus remitentes, así que las alertas de empleo y el resto del buzón no cuentan para el máximo.
 
 Los correos descargados se guardan en una base de datos SQLite local (`canditrack.db`, o la

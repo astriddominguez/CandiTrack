@@ -72,6 +72,7 @@ def test_openapi_spec_is_published(client):
         "linkedin",
         "infojobs",
         "indeed",
+        "tecnoempleo",
     ]
 
 
@@ -84,6 +85,7 @@ def test_platforms(client):
         {"name": "linkedin", "label": "LinkedIn"},
         {"name": "infojobs", "label": "InfoJobs"},
         {"name": "indeed", "label": "Indeed"},
+        {"name": "tecnoempleo", "label": "Tecnoempleo"},
     ]
 
 
@@ -202,7 +204,12 @@ def test_summary_defaults_to_60_days_and_all_platforms(client):
     body = client.get("/api/v1/summary").json()
 
     assert body["period"] == "60d"
-    assert [r["platform"] for r in body["platforms"]] == ["linkedin", "infojobs", "indeed"]
+    assert [r["platform"] for r in body["platforms"]] == [
+        "linkedin",
+        "infojobs",
+        "indeed",
+        "tecnoempleo",
+    ]
     # Solo cuenta Acme (enviada hace 40 días): Globex e Initech no tienen correo de envío.
     linkedin = body["platforms"][0]
     assert (linkedin["applied"], linkedin["alive"], linkedin["rejected"]) == (1, 0, 1)

@@ -3,8 +3,8 @@
 # de comandos (-p, -s, -n, --db) siempre tienen prioridad sobre lo que pongas aquí.
 
 [track]
-# Plataformas a revisar: "linkedin", "infojobs", "indeed". Si no se pone, todas.
-platforms = ["linkedin", "infojobs", "indeed"]
+# Plataformas a revisar: "linkedin", "infojobs", "indeed", "tecnoempleo". Si no se pone, todas.
+platforms = ["linkedin", "infojobs", "indeed", "tecnoempleo"]
 
 # Periodo a revisar: 7d, 4w, 6m, 1y...
 since = "30d"
