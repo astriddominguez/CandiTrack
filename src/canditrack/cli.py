@@ -24,6 +24,9 @@ from canditrack.storage import EmailCache
 from canditrack.summary import DEFAULT_PERIOD, format_summary, period_start, summarize
 from canditrack.tracking import Application, build_applications
 
+# Ancho de la columna de plataforma en `track`: el del nombre más largo.
+_PLATFORM_WIDTH = max(len(name) for name in PLATFORMS)
+
 STATUS_LABELS = {
     EventType.SUBMITTED: "enviada",
     EventType.VIEWED: "vista",
@@ -165,7 +168,7 @@ def _run_track(source: CachedMailSource, args: argparse.Namespace) -> int:
     applications, read = _load_applications(source, platforms, query, args.max)
     for app in applications:
         print(
-            f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<8}  "
+            f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<{_PLATFORM_WIDTH}}  "
             f"{STATUS_LABELS[app.status]:<9}  {app.company[:35]:<35}  {app.position or '-'}"
         )
     print(

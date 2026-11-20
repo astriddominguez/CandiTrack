@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 
-from canditrack.classifiers import indeed, infojobs, linkedin
+from canditrack.classifiers import indeed, infojobs, linkedin, tecnoempleo
 from canditrack.classifiers.base import Classifier
 from canditrack.models import ApplicationEvent, Email
 
@@ -34,6 +34,12 @@ PLATFORMS: dict[str, Platform] = {
             "Indeed",
             indeed.IndeedClassifier(),
             (indeed.APPLY_SENDER, *sorted(indeed.UPDATE_SENDERS)),
+        ),
+        Platform(
+            tecnoempleo.PLATFORM,
+            "Tecnoempleo",
+            tecnoempleo.TecnoempleoClassifier(),
+            tecnoempleo.SENDERS,
         ),
     )
 }

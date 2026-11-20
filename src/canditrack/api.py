@@ -146,8 +146,8 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
         version=VERSION,
         description=(
             "Seguimiento de candidaturas de empleo detectadas en Gmail "
-            "(LinkedIn, InfoJobs e Indeed). Los datos salen de la base de datos local; "
-            "para actualizarlos, ejecuta `canditrack track`."
+            "(LinkedIn, InfoJobs, Indeed y Tecnoempleo). Los datos salen de la base de datos "
+            "local; para actualizarlos, ejecuta `canditrack track`."
         ),
     )
     app.state.db_path = db_path
