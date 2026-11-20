@@ -20,6 +20,7 @@ from canditrack.mail.gmail import (
 )
 from canditrack.models import EventType
 from canditrack.platforms import PLATFORMS, Platform, classify_emails, gmail_query
+from canditrack.stats import DEFAULT_STALE_DAYS, compute_stats, format_stats
 from canditrack.storage import EmailCache
 from canditrack.summary import DEFAULT_PERIOD, format_summary, period_start, summarize
 from canditrack.tracking import Application, build_applications
@@ -52,6 +53,14 @@ def positive_int(value: str) -> int:
     if number <= 0:
         raise argparse.ArgumentTypeError(f"tiene que ser un entero mayor que 0: {value!r}")
     return number
+
+
+def parse_days(value: str) -> int:
+    """Tipo de argparse para un número de días ("21d", "3w"); devuelve los días."""
+    period = parse_period(value)
+    if not period.endswith("d"):
+        raise argparse.ArgumentTypeError(f"usa días o semanas (p. ej. 21d o 3w): {value!r}")
+    return int(period[:-1])
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -90,6 +99,28 @@ def main(argv: list[str] | None = None) -> None:
     )
     _add_selection_arguments(summary)
 
+    stats = sub.add_parser(
+        "stats",
+        help="Estadísticas por plataforma: respuestas, rechazos y tiempos",
+        description=f"Los valores por defecto se pueden cambiar en {DEFAULT_CONFIG_PATH}.",
+    )
+    stats.add_argument(
+        "-s",
+        "--since",
+        type=parse_period,
+        help=f"Periodo hasta hoy: 7d, 4w, 3m... (por defecto, {DEFAULT_PERIOD})",
+    )
+    stats.add_argument(
+        "--stale",
+        type=parse_days,
+        default=DEFAULT_STALE_DAYS,
+        help=(
+            "Días sin novedades para considerar una candidatura «sin respuesta»: 21d, 3w... "
+            f"(por defecto, {DEFAULT_STALE_DAYS}d)"
+        ),
+    )
+    _add_selection_arguments(stats)
+
     serve = sub.add_parser(
         "serve",
         help="Arranca la API REST (documentación en /docs)",
@@ -113,7 +144,8 @@ def main(argv: list[str] | None = None) -> None:
 
     today = date.today()
     if args.command != "fetch":
-        _resolve_options(args, track if args.command == "track" else summary)
+        subparsers = {"track": track, "summary": summary, "stats": stats}
+        _resolve_options(args, subparsers[args.command])
 
     source = GmailSource.from_credentials(get_credentials(args.credentials, args.token))
 
@@ -125,8 +157,10 @@ def main(argv: list[str] | None = None) -> None:
         cached = CachedMailSource(source, cache)
         if args.command == "track":
             read = _run_track(cached, args)
-        else:
+        elif args.command == "summary":
             read = _run_summary(cached, args, today)
+        else:
+            read = _run_stats(cached, args, today)
 
     if read >= args.max:
         print(f"Aviso: se ha llegado al máximo de {args.max} correos; amplíalo con -n.")
@@ -179,18 +213,32 @@ def _run_track(source: CachedMailSource, args: argparse.Namespace) -> int:
 
 
 def _run_summary(source: CachedMailSource, args: argparse.Namespace, today: date) -> int:
-    platforms = [PLATFORMS[name] for name in args.platform]
-    # Gmail interpreta "after:" en su zona horaria: dos días de margen, y luego se filtra
-    # por la fecha local. Se busca hasta hoy para conocer el estado actual de cada una.
-    query = gmail_query(platforms, after=period_start(args.since, today) - timedelta(days=2))
-    applications, read = _load_applications(source, platforms, query, args.max)
+    platforms, applications, read = _load_period(source, args, today)
     labels = {p.name: p.label for p in platforms}
     print(format_summary(summarize(applications, labels, args.since, today)))
     return read
 
 
+def _run_stats(source: CachedMailSource, args: argparse.Namespace, today: date) -> int:
+    platforms, applications, read = _load_period(source, args, today)
+    print(format_stats(compute_stats(applications, platforms, args.since, today, args.stale)))
+    return read
+
+
+def _load_period(
+    source: CachedMailSource, args: argparse.Namespace, today: date
+) -> tuple[list[Platform], list[Application], int]:
+    """Candidaturas con correos desde el inicio del periodo hasta hoy (summary y stats)."""
+    platforms = [PLATFORMS[name] for name in args.platform]
+    # Gmail interpreta "after:" en su zona horaria: dos días de margen, y luego se filtra
+    # por la fecha local. Se busca hasta hoy para conocer el estado actual de cada una.
+    query = gmail_query(platforms, after=period_start(args.since, today) - timedelta(days=2))
+    applications, read = _load_applications(source, platforms, query, args.max)
+    return platforms, applications, read
+
+
 def _add_selection_arguments(parser: argparse.ArgumentParser) -> None:
-    """Opciones comunes de `track` y `summary`.
+    """Opciones comunes de `track`, `summary` y `stats`.
 
     Sin valor por defecto (None): si no se pasan, se usa el archivo de configuración.
     """

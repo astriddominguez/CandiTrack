@@ -235,3 +235,42 @@ def test_summary_period_and_platforms(client):
 @pytest.mark.parametrize("params", [{"since": "dos"}, {"platform": "glassdoor"}])
 def test_summary_invalid_parameters_return_422(client, params):
     assert client.get("/api/v1/summary", params=params).status_code == 422
+
+
+def test_stats_defaults(client):
+    body = client.get("/api/v1/stats").json()
+
+    assert (body["period"], body["stale_days"]) == ("60d", 21)
+    linkedin, infojobs, *_ = body["platforms"]
+    # Acme: enviada hace 40 días y rechazada hace 5 → respondida en 35 días.
+    assert linkedin == {
+        "platform": "linkedin",
+        "label": "LinkedIn",
+        "sent": 1,
+        "responded": 1,
+        "rejected": 1,
+        "no_response": 0,
+        "median_days_to_response": 35.0,
+        "notifies_views": True,
+        "notifies_rejections": True,
+    }
+    assert (infojobs["notifies_views"], infojobs["notifies_rejections"]) == (False, False)
+    assert body["total"]["platform"] is None
+    assert body["total"]["notifies_views"] is None
+
+
+def test_stats_parameters(client):
+    params = [("since", "30d"), ("stale_days", "7"), ("platform", "tecnoempleo")]
+    body = client.get("/api/v1/stats", params=params).json()
+
+    assert (body["period"], body["stale_days"]) == ("30d", 7)
+    assert [r["label"] for r in body["platforms"]] == ["Tecnoempleo"]
+    assert body["total"]["sent"] == 0
+    assert body["total"]["median_days_to_response"] is None
+
+
+@pytest.mark.parametrize(
+    "params", [{"since": "x"}, {"stale_days": 0}, {"stale_days": 400}, {"platform": "glassdoor"}]
+)
+def test_stats_invalid_parameters_return_422(client, params):
+    assert client.get("/api/v1/stats", params=params).status_code == 422

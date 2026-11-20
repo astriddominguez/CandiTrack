@@ -245,3 +245,39 @@ class FixedDate(date):
     @classmethod
     def today(cls):
         return cls(2026, 11, 19)
+
+
+def test_stats_command(use_source, capsys, monkeypatch):
+    monkeypatch.setattr(cli, "date", FixedDate)
+    source = use_source(
+        [
+            make_email(LINKEDIN, "Ana, se ha enviado tu solicitud a Acme", day=1, msg_id="1"),
+            make_email(LINKEDIN, "Tu solicitud para el puesto de Dev en Acme", day=4, msg_id="2"),
+        ]
+    )
+
+    cli.main(["stats", "-p", "linkedin", "-s", "30d", "--stale", "2w"])
+
+    out = capsys.readouterr().out
+    assert out.startswith("CandiTrack · estadísticas · últimos 30 días (20 oct – 19 nov 2026)")
+    assert out.splitlines()[3].split() == [
+        "LinkedIn",
+        "1",
+        "1",
+        "(100%)",
+        "1",
+        "(100%)",
+        "0",
+        "(0%)",
+        "3",
+    ]
+    assert "sin novedades en 14 días o más" in out
+    assert source.calls[0][0].endswith("after:2026/10/18")
+
+
+@pytest.mark.parametrize("value", ["1m", "1y", "cero"])
+def test_stats_rejects_stale_that_is_not_days(use_source, value):
+    use_source([])
+
+    with pytest.raises(SystemExit):
+        cli.main(["stats", "--stale", value])

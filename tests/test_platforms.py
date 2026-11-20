@@ -51,3 +51,14 @@ def test_classify_emails_uses_the_matching_platform():
     )
 
     assert [(e.platform, e.company) for e in events] == [("linkedin", "Acme")]
+
+
+def test_platforms_declare_what_they_notify():
+    flags = {p.name: (p.notifies_views, p.notifies_rejections) for p in PLATFORMS.values()}
+
+    assert flags == {
+        "linkedin": (True, True),
+        "infojobs": (False, False),
+        "indeed": (False, False),
+        "tecnoempleo": (True, False),
+    }

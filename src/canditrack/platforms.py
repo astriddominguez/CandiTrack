@@ -16,6 +16,10 @@ class Platform:
     classifier: Classifier
     # Remitentes para la búsqueda de Gmail (`from:`); acotan qué correos se descargan.
     senders: tuple[str, ...]
+    # Si la plataforma avisa por correo cuando la empresa ve tu candidatura o te rechaza.
+    # Si no, sus tasas de respuesta salen artificialmente bajas: las estadísticas lo advierten.
+    notifies_views: bool = True
+    notifies_rejections: bool = True
 
 
 PLATFORMS: dict[str, Platform] = {
@@ -28,18 +32,23 @@ PLATFORMS: dict[str, Platform] = {
             "InfoJobs",
             infojobs.InfoJobsClassifier(),
             (infojobs.SENDER_LOCAL_PART,),
+            notifies_views=False,  # los avisos de "ha cambiado" no dicen de qué candidatura
+            notifies_rejections=False,  # solo avisa de que el proceso ha finalizado
         ),
         Platform(
             indeed.PLATFORM,
             "Indeed",
             indeed.IndeedClassifier(),
             (indeed.APPLY_SENDER, *sorted(indeed.UPDATE_SENDERS)),
+            notifies_views=False,  # solo en correos antiguos (2018)
+            notifies_rejections=False,  # solo algunas empresas lo hacen
         ),
         Platform(
             tecnoempleo.PLATFORM,
             "Tecnoempleo",
             tecnoempleo.TecnoempleoClassifier(),
             tecnoempleo.SENDERS,
+            notifies_rejections=False,  # el aviso de descarte no dice de qué candidatura es
         ),
     )
 }
