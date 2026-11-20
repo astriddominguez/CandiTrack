@@ -43,7 +43,7 @@ def build_applications(events: Iterable[ApplicationEvent]) -> list[Application]:
     for event in events:
         by_company[(event.platform, _key(event.company))].append(event)
 
-    applications = []
+    applications: list[Application] = []
     for company_events in by_company.values():
         by_position: dict[str | None, list[ApplicationEvent]] = defaultdict(list)
         for event in company_events:

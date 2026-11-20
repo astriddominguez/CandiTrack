@@ -34,14 +34,15 @@ def get_credentials(
     """Carga el token guardado, lo refresca o lanza el flujo OAuth en el navegador."""
     creds: Credentials | None = None
     if token_path.exists():
-        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+        # google-auth no anota estos métodos.
+        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)  # type: ignore[no-untyped-call]
 
     if creds and creds.valid:
         return creds
 
     if creds and creds.expired and creds.refresh_token:
         try:
-            creds.refresh(Request())
+            creds.refresh(Request())  # type: ignore[no-untyped-call]
         except RefreshError:
             # En modo "Testing" el refresh token caduca a los 7 días: volver a autorizar.
             creds = None

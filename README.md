@@ -123,7 +123,8 @@ uv sync               # crea .venv e instala dependencias (incluye dev)
 
 uv run ruff check .   # lint
 uv run ruff format .  # formateo
-uv run pytest         # tests
+uv run mypy           # comprobación de tipos (modo estricto)
+uv run pytest --cov   # tests y cobertura (mínimo 95 %)
 ```
 
 Para añadir dependencias: `uv add <paquete>` (o `uv add --dev <paquete>`).
@@ -131,7 +132,8 @@ Para añadir dependencias: `uv add <paquete>` (o `uv add --dev <paquete>`).
 ## Flujo de trabajo
 
 - `main` está protegida: los cambios entran solo por Pull Request.
-- La CI (GitHub Actions) ejecuta lint y tests en cada PR.
+- La CI (GitHub Actions) ejecuta lint, comprobación de tipos y tests en cada PR, y falla si
+  la cobertura baja del 95 %. La tabla de cobertura sale en el resumen de cada ejecución.
 
 ## Versiones
 

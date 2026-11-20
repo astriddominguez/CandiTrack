@@ -24,6 +24,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - name: Comprobar tipos (mypy)
+        run: uv run mypy
 
   pytest:
     name: pytest (py${{ matrix.python-version }})
@@ -39,7 +41,11 @@ jobs:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
       - run: uv sync --locked
+      # Falla si la cobertura baja del mínimo de pyproject.toml ([tool.coverage.report]).
       - run: uv run pytest --cov=canditrack --cov-report=term-missing
+      - name: Cobertura en el resumen de la ejecución
+        if: matrix.python-version == '3.12'
+        run: uv run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
   # Check único para la protección de rama: pasa solo si lint y todos los pytest pasan.
   tests:

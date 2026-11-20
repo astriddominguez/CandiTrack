@@ -27,8 +27,18 @@ API_PREFIX = "/api/v1"
 VERSION = version("canditrack")
 PERIOD_PATTERN = r"^[1-9]\d*[dwmy]$"  # 7d, 4w, 3m, 1y...
 
-# Enum con las plataformas registradas: en OpenAPI aparece como lista cerrada de valores.
-PlatformName = StrEnum("PlatformName", {name: name for name in PLATFORMS})
+
+class PlatformName(StrEnum):
+    """Plataformas soportadas: en OpenAPI aparece como lista cerrada de valores.
+
+    Se declara explícitamente (y no a partir de PLATFORMS) para que mypy y el editor
+    conozcan sus valores. Un test comprueba que coincide con el registro.
+    """
+
+    LINKEDIN = "linkedin"
+    INFOJOBS = "infojobs"
+    INDEED = "indeed"
+    TECNOEMPLEO = "tecnoempleo"
 
 
 # --- Modelos de respuesta (definen el esquema que se publica en OpenAPI) ---

@@ -69,9 +69,9 @@ def compute_stats(
     today: date,
     stale_days: int = DEFAULT_STALE_DAYS,
 ) -> Stats:
-    platforms = {p.name: p for p in platforms}
+    by_name = {p.name: p for p in platforms}
     start = period_start(period, today)
-    rows = {name: PlatformStats() for name in platforms}
+    rows = {name: PlatformStats() for name in by_name}
 
     for app in applications:
         if app.platform not in rows:
@@ -81,7 +81,7 @@ def compute_stats(
             continue
         rows[app.platform] += _application_stats(app, sent_at, today, stale_days)
 
-    return Stats(period, start, today, stale_days, rows, platforms)
+    return Stats(period, start, today, stale_days, rows, by_name)
 
 
 def _submitted_at(app: Application, start: date, end: date) -> datetime | None:

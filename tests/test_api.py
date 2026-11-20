@@ -3,8 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from canditrack.api import VERSION, create_app
+from canditrack.api import VERSION, PlatformName, create_app
 from canditrack.models import Email
+from canditrack.platforms import PLATFORMS
 from canditrack.storage import EmailCache
 
 LINKEDIN = "LinkedIn <jobs-noreply@linkedin.com>"
@@ -274,3 +275,8 @@ def test_stats_parameters(client):
 )
 def test_stats_invalid_parameters_return_422(client, params):
     assert client.get("/api/v1/stats", params=params).status_code == 422
+
+
+def test_platform_enum_matches_registry():
+    # Si añades una plataforma a PLATFORMS, añádela también a PlatformName.
+    assert [p.value for p in PlatformName] == list(PLATFORMS)
