@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/astriddominguez/CandiTrack/compare/v0.9.0...v0.10.0) (2026-11-20)
+
+
+### Features
+
+* add Tecnoempleo rule-based classifier ([#23](https://github.com/astriddominguez/CandiTrack/issues/23)) ([b603cca](https://github.com/astriddominguez/CandiTrack/commit/b603cca0c3eb44878d755c5ecb24abedcfafb814))
+
 ## [0.9.0](https://github.com/astriddominguez/CandiTrack/compare/v0.8.0...v0.9.0) (2026-11-19)
 
 
