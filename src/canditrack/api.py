@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from canditrack.config import normalize_period
@@ -26,6 +28,7 @@ from canditrack.tracking import Application, build_applications, filter_applicat
 API_PREFIX = "/api/v1"
 VERSION = version("canditrack")
 PERIOD_PATTERN = r"^[1-9]\d*[dwmy]$"  # 7d, 4w, 3m, 1y...
+WEB_DIR = Path(__file__).parent / "web"  # archivos del dashboard (HTML, CSS, JS)
 
 
 class PlatformName(StrEnum):
@@ -353,6 +356,14 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
         )
 
     app.include_router(router)
+
+    # Dashboard web: una página estática que consume esta misma API desde el navegador.
+    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def dashboard() -> FileResponse:
+        return FileResponse(WEB_DIR / "index.html")
+
     return app
 
 

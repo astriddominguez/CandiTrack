@@ -298,3 +298,50 @@ def test_applications_filter_by_company(client, params, companies):
 
 def test_applications_empty_company_filter_returns_422(client):
     assert client.get("/api/v1/applications", params={"company": ""}).status_code == 422
+
+
+def test_dashboard_page_is_served(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<title>CandiTrack</title>" in response.text
+    assert "/static/app.js" in response.text
+    assert '<dialog id="detail"' in response.text  # ventana de detalle
+
+
+@pytest.mark.parametrize(
+    ("path", "content_type"),
+    [("/static/app.js", "javascript"), ("/static/style.css", "text/css")],
+)
+def test_dashboard_static_files_are_served(client, path, content_type):
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert content_type in response.headers["content-type"]
+
+
+def test_dashboard_is_not_part_of_the_api_spec(client):
+    paths = client.get("/openapi.json").json()["paths"]
+
+    assert "/" not in paths
+    assert all(path.startswith("/api/v1/") for path in paths)
+
+
+def test_dashboard_loads_vendored_chartjs(client):
+    page = client.get("/").text
+    script = "/static/vendor/chart.js-4.4.1/chart.umd.js"
+
+    assert script in page
+    assert page.index(script) < page.index("/static/app.js")  # Chart.js antes que app.js
+    response = client.get(script)
+    assert response.status_code == 200
+    assert response.text.startswith("/*!\n * Chart.js v4.4.1")
+    assert client.get("/static/vendor/chart.js-4.4.1/LICENSE.md").status_code == 200
+
+
+def test_dashboard_favicon_is_served(client):
+    assert '<link rel="icon" href="/static/favicon.svg"' in client.get("/").text
+    response = client.get("/static/favicon.svg")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")

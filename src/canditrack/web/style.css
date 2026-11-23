@@ -1,0 +1,428 @@
+/* Colores y medidas en variables: así el modo oscuro (más adelante) solo las redefine. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1d2330;
+  --muted: #667085;
+  --border: #e3e6eb;
+  --accent: #3b5bdb;
+  --danger-bg: #fdecec;
+  --danger-text: #a61b1b;
+  /* Colores de las series del gráfico (los lee app.js). */
+  --chart-sent: #3b5bdb;
+  --chart-responded: #2f9e6b;
+  --chart-rejected: #e03131;
+  --chart-no-response: #adb5bd;
+  --badge-submitted-bg: #e7edff;
+  --badge-submitted-text: #2b44a8;
+  --badge-viewed-bg: #e3f6ec;
+  --badge-viewed-text: #1b7a4a;
+  --badge-rejected-bg: #fdecec;
+  --badge-rejected-text: #a61b1b;
+  --badge-closed-bg: #eef0f3;
+  --badge-closed-text: #4b5565;
+  color-scheme: light dark; /* controles nativos (selects, scroll...) en el tema del sistema */
+  --radius: 10px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Modo oscuro automático si el sistema lo usa: solo cambian las variables. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151c;
+    --surface: #1b2029;
+    --text: #e6e9ef;
+    --muted: #98a2b3;
+    --border: #2c3340;
+    --accent: #7c95ff;
+    --danger-bg: #3b1a1a;
+    --danger-text: #ffb3b3;
+    --chart-sent: #6d86ff;
+    --chart-responded: #4cc38a;
+    --chart-rejected: #ff6b6b;
+    --chart-no-response: #6b7280;
+    --badge-submitted-bg: #1f2a52;
+    --badge-submitted-text: #a9b9ff;
+    --badge-viewed-bg: #14372a;
+    --badge-viewed-text: #7ee2b0;
+    --badge-rejected-bg: #431c1c;
+    --badge-rejected-text: #ffaaaa;
+    --badge-closed-bg: #2a303b;
+    --badge-closed-text: #c3cad6;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.period {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+}
+
+select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.error {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/* Tarjetas de cifras: 4 en fila en pantallas anchas, se reparten solas en las estrechas. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.kpi {
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.kpi h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.kpi-value {
+  margin: 8px 0 4px;
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Paneles: bloques blancos con borde (tabla, y más adelante el gráfico). */
+.panel {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input[type="search"] {
+  min-width: 220px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+/* En pantallas estrechas la tabla se desplaza en horizontal en vez de romper la página. */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+td.position {
+  white-space: normal;
+  min-width: 240px;
+}
+
+tbody tr:hover {
+  background: var(--bg);
+}
+
+/* Estado: una "pastilla" de color por estado. */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-submitted {
+  background: var(--badge-submitted-bg);
+  color: var(--badge-submitted-text);
+}
+
+.badge-viewed {
+  background: var(--badge-viewed-bg);
+  color: var(--badge-viewed-text);
+}
+
+.badge-rejected {
+  background: var(--badge-rejected-bg);
+  color: var(--badge-rejected-text);
+}
+
+.badge-closed {
+  background: var(--badge-closed-bg);
+  color: var(--badge-closed-text);
+}
+
+.empty {
+  margin: 16px 0 0;
+  color: var(--muted);
+}
+
+.pager {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* El gráfico necesita un contenedor con altura fija para no crecer sin fin. */
+.chart-box {
+  position: relative;
+  height: 300px;
+}
+
+.chart-note {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Las filas se pueden abrir: con el ratón o con el teclado (Tab + Enter). */
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Ventana de detalle (<dialog> nativo). */
+dialog {
+  width: min(560px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.detail-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.detail-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.detail-position {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.detail-meta {
+  margin: 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+dialog h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+/* Historial: una línea vertical con un punto por evento. */
+.timeline {
+  margin: 0;
+  padding: 0 0 0 20px;
+  list-style: none;
+  border-left: 2px solid var(--border);
+}
+
+.timeline li {
+  position: relative;
+  padding: 0 0 16px 12px;
+}
+
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -27px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+}
+
+.timeline time {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.timeline .event-position {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Mientras llegan los datos, la tabla se atenúa (aria-busy lo pone app.js). */
+[aria-busy="true"] {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+/* Pantallas estrechas (móvil): todo un poco más compacto. */
+@media (max-width: 600px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  main {
+    padding: 16px 12px;
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .kpi {
+    padding: 12px 14px;
+  }
+
+  .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  input[type="search"] {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filters label {
+    flex: 1 1 140px;
+  }
+
+  .pager {
+    justify-content: space-between;
+  }
+
+  .chart-box {
+    height: 240px;
+  }
+}
