@@ -281,3 +281,40 @@ def test_stats_rejects_stale_that_is_not_days(use_source, value):
 
     with pytest.raises(SystemExit):
         cli.main(["stats", "--stale", value])
+
+
+def test_track_filters_by_status_and_company(use_source, capsys):
+    use_source(
+        [
+            make_email(
+                LINKEDIN, "Tu solicitud para el puesto de Dev en Tecnologías Acme", msg_id="1"
+            ),
+            make_email(LINKEDIN, "Globex ha visto tu solicitud", msg_id="2"),
+            make_email(LINKEDIN, "Tu solicitud para el puesto de QA en Initech", msg_id="3"),
+        ]
+    )
+
+    cli.main(["track", "--status", "rechazada", "--company", "TECNOLOGIAS"])
+
+    out = capsys.readouterr().out
+    assert "Tecnologías Acme" in out
+    assert "Globex" not in out
+    assert "Initech" not in out
+    assert "1 de 3 candidaturas (3 correos revisados" in out
+
+
+def test_track_without_filters_shows_plain_count(use_source, capsys):
+    use_source([make_email(LINKEDIN, "Globex ha visto tu solicitud")])
+
+    cli.main(["track"])
+
+    assert "\n1 candidaturas (1 correos revisados" in capsys.readouterr().out
+
+
+def test_track_rejects_unknown_status(use_source, capsys):
+    use_source([])
+
+    with pytest.raises(SystemExit):
+        cli.main(["track", "--status", "entrevista"])
+
+    assert "invalid choice: 'entrevista'" in capsys.readouterr().err

@@ -280,3 +280,21 @@ def test_stats_invalid_parameters_return_422(client, params):
 def test_platform_enum_matches_registry():
     # Si añades una plataforma a PLATFORMS, añádela también a PlatformName.
     assert [p.value for p in PlatformName] == list(PLATFORMS)
+
+
+@pytest.mark.parametrize(
+    ("params", "companies"),
+    [
+        ({"company": "ACME"}, ["Acme"]),
+        ({"company": "glob", "status": "viewed"}, ["Globex"]),
+        ({"company": "nadie"}, []),
+    ],
+)
+def test_applications_filter_by_company(client, params, companies):
+    body = client.get("/api/v1/applications", params=params).json()
+
+    assert [a["company"] for a in body["items"]] == companies
+
+
+def test_applications_empty_company_filter_returns_422(client):
+    assert client.get("/api/v1/applications", params={"company": ""}).status_code == 422

@@ -21,7 +21,7 @@ from canditrack.platforms import PLATFORMS, Platform, classify_emails
 from canditrack.stats import DEFAULT_STALE_DAYS, PlatformStats, compute_stats
 from canditrack.storage import DEFAULT_DB_PATH, EmailCache
 from canditrack.summary import DEFAULT_PERIOD, Counts, period_start, summarize
-from canditrack.tracking import Application, build_applications
+from canditrack.tracking import Application, build_applications, filter_applications
 
 API_PREFIX = "/api/v1"
 VERSION = version("canditrack")
@@ -221,6 +221,15 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
             PlatformName | None, Query(description="Filtrar por plataforma.")
         ] = None,
         status: Annotated[EventType | None, Query(description="Filtrar por estado actual.")] = None,
+        company: Annotated[
+            str | None,
+            Query(
+                description="Empresa que contenga este texto (sin distinguir mayúsculas ni "
+                "acentos).",
+                min_length=1,
+                examples=["arelance"],
+            ),
+        ] = None,
         since: Annotated[
             str | None,
             Query(
@@ -232,14 +241,13 @@ def create_app(db_path: Path = DEFAULT_DB_PATH) -> FastAPI:
         limit: Annotated[int, Query(ge=1, le=500, description="Tamaño de la página.")] = 50,
         offset: Annotated[int, Query(ge=0, description="Candidaturas a saltar.")] = 0,
     ) -> ApplicationPage:
-        applications = _load_applications(request.app.state.db_path)
-        if platform:
-            applications = [a for a in applications if a.platform == platform]
-        if status:
-            applications = [a for a in applications if a.status is status]
-        if since:
-            start = period_start(normalize_period(since), date.today())
-            applications = [a for a in applications if a.updated.astimezone().date() >= start]
+        applications = filter_applications(
+            _load_applications(request.app.state.db_path),
+            platform=platform,
+            status=status,
+            company=company,
+            updated_since=period_start(normalize_period(since), date.today()) if since else None,
+        )
 
         page = applications[offset : offset + limit]
         return ApplicationPage(

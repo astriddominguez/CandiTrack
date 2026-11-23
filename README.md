@@ -24,6 +24,8 @@ con su estado más reciente (`enviada`, `vista`, `rechazada` o `cerrada`):
 uv run canditrack track                        # todas las plataformas, últimos 30 días
 uv run canditrack track -p linkedin -p indeed  # solo esas plataformas
 uv run canditrack track --since 6m -n 1000     # periodo (7d, 4w, 6m, 1y...) y máximo de correos
+uv run canditrack track --status rechazada     # solo un estado: enviada, vista, rechazada, cerrada
+uv run canditrack track --company tecnologias  # empresas que contengan el texto (sin importar acentos)
 ```
 
 Plataformas soportadas: `linkedin`, `infojobs`, `indeed` y `tecnoempleo`. Solo se descargan los correos de
@@ -97,7 +99,7 @@ interactiva en `/docs` (Swagger UI) y `/redoc`.
 |---|---|---|
 | `GET` | `/api/v1/health` | Estado del servicio y versión |
 | `GET` | `/api/v1/platforms` | Plataformas soportadas |
-| `GET` | `/api/v1/applications` | Candidaturas; filtros `platform`, `status`, `since` y paginación `limit`/`offset` |
+| `GET` | `/api/v1/applications` | Candidaturas; filtros `platform`, `status`, `company`, `since` y paginación `limit`/`offset` |
 | `GET` | `/api/v1/applications/{id}` | Una candidatura con todos sus eventos (404 si no existe) |
 | `GET` | `/api/v1/summary` | Resumen del periodo (`since`, por defecto `60d`; `platform` repetible) |
 | `GET` | `/api/v1/stats` | Estadísticas por plataforma (`since`, `stale_days`, `platform`) |
