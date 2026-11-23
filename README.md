@@ -83,6 +83,21 @@ No todas las plataformas avisan por correo de lo mismo (InfoJobs e Indeed no avi
 vistas ni rechazos; Tecnoempleo, de rechazos): la salida lo indica, porque sus cifras de
 respuesta salen más bajas de lo real.
 
+### Dashboard web
+
+`canditrack serve` también sirve un dashboard en **http://127.0.0.1:8000/**, que consume la
+API desde el navegador:
+
+- **Cifras del periodo**: enviadas, % con respuesta, sin respuesta y días hasta la respuesta.
+- **Gráfico por plataforma** (con aviso ⚠ en las que no avisan de vistas o rechazos).
+- **Tabla de candidaturas** con filtros (plataforma, estado, empresa) y paginación.
+- **Detalle** de cada candidatura con su historial, al pulsar una fila (también con teclado).
+
+Es HTML, CSS y JavaScript sin frameworks ni paso de compilación (`src/canditrack/web/`), con
+modo oscuro automático y adaptado a móvil. No hace peticiones a terceros: los gráficos usan una
+copia local de [Chart.js](https://www.chartjs.org) 4.4.1 (licencia MIT, en
+`src/canditrack/web/vendor/`).
+
 ### API REST
 
 `canditrack serve` arranca una API REST (FastAPI) que sirve los mismos datos. Lee solo la
