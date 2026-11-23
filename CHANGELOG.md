@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/astriddominguez/CandiTrack/compare/v0.12.0...v0.13.0) (2026-11-23)
+
+
+### Features
+
+* add web dashboard served by the API ([#30](https://github.com/astriddominguez/CandiTrack/issues/30)) ([04811cd](https://github.com/astriddominguez/CandiTrack/commit/04811cd854582c0e0a9352dc5b92ba0cf3e14891))
+
 ## [0.12.0](https://github.com/astriddominguez/CandiTrack/compare/v0.11.0...v0.12.0) (2026-11-23)
 
 
