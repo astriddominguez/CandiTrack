@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/astriddominguez/CandiTrack/compare/v0.11.0...v0.12.0) (2026-11-23)
+
+
+### Features
+
+* filter track output by status and company ([#28](https://github.com/astriddominguez/CandiTrack/issues/28)) ([0d65b11](https://github.com/astriddominguez/CandiTrack/commit/0d65b11af80be2b8e9ff58809f47b1164a099fb2))
+
 ## [0.11.0](https://github.com/astriddominguez/CandiTrack/compare/v0.10.0...v0.11.0) (2026-11-20)
 
 
