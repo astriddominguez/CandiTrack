@@ -23,7 +23,7 @@ from canditrack.platforms import PLATFORMS, Platform, classify_emails, gmail_que
 from canditrack.stats import DEFAULT_STALE_DAYS, compute_stats, format_stats
 from canditrack.storage import EmailCache
 from canditrack.summary import DEFAULT_PERIOD, format_summary, period_start, summarize
-from canditrack.tracking import Application, build_applications
+from canditrack.tracking import Application, build_applications, filter_applications
 
 # Ancho de la columna de plataforma en `track`: el del nombre más largo.
 _PLATFORM_WIDTH = max(len(name) for name in PLATFORMS)
@@ -34,6 +34,7 @@ STATUS_LABELS = {
     EventType.REJECTED: "rechazada",
     EventType.CLOSED: "cerrada",
 }
+_STATUS_BY_LABEL = {label: status for status, label in STATUS_LABELS.items()}
 
 
 def parse_period(value: str) -> str:
@@ -83,6 +84,16 @@ def main(argv: list[str] | None = None) -> None:
         "--since",
         type=parse_period,
         help=f"Periodo a revisar: 7d, 4w, 6m, 1y... (por defecto, {defaults.since})",
+    )
+    track.add_argument(
+        "--status",
+        choices=list(STATUS_LABELS.values()),
+        help="Mostrar solo las candidaturas en este estado",
+    )
+    track.add_argument(
+        "--company",
+        help="Mostrar solo las empresas que contengan este texto (sin importar mayúsculas ni "
+        "acentos)",
     )
     _add_selection_arguments(track)
 
@@ -200,15 +211,22 @@ def _run_track(source: CachedMailSource, args: argparse.Namespace) -> int:
     platforms = [PLATFORMS[name] for name in args.platform]
     query = gmail_query(platforms, args.since)
     applications, read = _load_applications(source, platforms, query, args.max)
-    for app in applications:
+    shown = filter_applications(
+        applications,
+        status=_STATUS_BY_LABEL[args.status] if args.status else None,
+        company=args.company,
+    )
+    for app in shown:
         print(
             f"{app.updated.astimezone():%Y-%m-%d}  {app.platform:<{_PLATFORM_WIDTH}}  "
             f"{STATUS_LABELS[app.status]:<9}  {app.company[:35]:<35}  {app.position or '-'}"
         )
-    print(
-        f"\n{len(applications)} candidaturas ({read} correos revisados, "
-        f"{source.downloaded} descargados de Gmail)"
+    count = (
+        f"{len(shown)} de {len(applications)} candidaturas"
+        if len(shown) != len(applications)
+        else f"{len(applications)} candidaturas"
     )
+    print(f"\n{count} ({read} correos revisados, {source.downloaded} descargados de Gmail)")
     return read
 
 

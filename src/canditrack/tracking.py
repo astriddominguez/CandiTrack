@@ -1,10 +1,11 @@
 """Agrupa los eventos detectados en candidaturas y calcula su estado actual."""
 
 import hashlib
+import unicodedata
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from canditrack.models import ApplicationEvent, EventType
 
@@ -74,3 +75,35 @@ def _application(events: list[ApplicationEvent]) -> Application:
 
 def _key(text: str) -> str:
     return " ".join(text.casefold().split())
+
+
+def filter_applications(
+    applications: Iterable[Application],
+    *,
+    platform: str | None = None,
+    status: EventType | None = None,
+    company: str | None = None,
+    updated_since: date | None = None,
+) -> list[Application]:
+    """Filtra candidaturas; los filtros que se dejan en None no se aplican.
+
+    `company` busca el texto dentro del nombre de la empresa sin distinguir mayúsculas ni
+    acentos ("tecnologias" encuentra "PSS Tecnologías"). `updated_since` compara con la
+    fecha local del evento más reciente.
+    """
+    wanted = _fold(company) if company else None
+    return [
+        app
+        for app in applications
+        if (platform is None or app.platform == platform)
+        and (status is None or app.status is status)
+        and (wanted is None or wanted in _fold(app.company))
+        and (updated_since is None or app.updated.astimezone().date() >= updated_since)
+    ]
+
+
+def _fold(text: str) -> str:
+    """Minúsculas, sin acentos y con los espacios normalizados, para comparar textos."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    without_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return " ".join(without_accents.casefold().split())

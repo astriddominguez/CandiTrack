@@ -1,7 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+
+import pytest
 
 from canditrack.models import ApplicationEvent, EventType
-from canditrack.tracking import build_applications
+from canditrack.tracking import build_applications, filter_applications
 
 
 def event(
@@ -90,3 +92,29 @@ def test_application_id_is_stable_and_ignores_case_and_spaces():
     assert a.id == b.id
     assert a.id != c.id
     assert len(a.id) == 12
+
+
+FILTER_EVENTS = [
+    event(EventType.SUBMITTED, 1, company="PSS Tecnologías", position="Dev"),
+    event(EventType.REJECTED, 5, company="Arelance", position="Data"),
+    event(EventType.VIEWED, 9, company="Acme", position="QA", platform="indeed"),
+]
+
+
+@pytest.mark.parametrize(
+    ("filters", "companies"),
+    [
+        ({}, ["Acme", "Arelance", "PSS Tecnologías"]),
+        ({"status": EventType.REJECTED}, ["Arelance"]),
+        ({"platform": "indeed"}, ["Acme"]),
+        ({"company": "tecnologias"}, ["PSS Tecnologías"]),  # sin acento
+        ({"company": "  ARELANCE "}, ["Arelance"]),  # mayúsculas y espacios
+        ({"company": "e"}, ["Acme", "Arelance", "PSS Tecnologías"]),  # contiene
+        ({"company": "arelance", "status": EventType.VIEWED}, []),  # se combinan
+        ({"updated_since": date(2026, 11, 3)}, ["Acme", "Arelance"]),  # margen de zona horaria
+    ],
+)
+def test_filter_applications(filters, companies):
+    applications = filter_applications(build_applications(FILTER_EVENTS), **filters)
+
+    assert [a.company for a in applications] == companies
